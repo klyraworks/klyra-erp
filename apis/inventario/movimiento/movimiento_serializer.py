@@ -16,8 +16,6 @@ from apps.inventario.models import (
     Bodega
 )
 
-from apis.inventario.producto.producto_serializer import ProductoSerializer
-from django.contrib.auth.models import User
 
 from utils.validators import BusinessValidators
 import logging

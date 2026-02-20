@@ -7,7 +7,7 @@ from apps.seguridad.models import Empleado
 from cities_light.models import Country, SubRegion
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q
+from django.db.models import Q, Sum, F
 from django.utils import timezone
 from unidecode import unidecode
 
@@ -375,10 +375,11 @@ class Producto(BaseModel):
 
     # ==================== MÉTODOS PRIVADOS ====================
     def _inicializar_stock_bodegas(self):
-        """Crea stock en todas las bodegas activas"""
-        from apps.inventario.models import Bodega, Stock
+        import logging
+        logger = logging.getLogger('apps.inventario')
 
         bodegas = Bodega.objects.filter(empresa=self.empresa, is_active=True, deleted_at__isnull=True)
+        logger.info(f"Inicializando stock | Producto={self.id} | Bodegas={bodegas.count()}")
 
         stocks = [
             Stock(
@@ -393,6 +394,7 @@ class Producto(BaseModel):
         ]
 
         Stock.objects.bulk_create(stocks, ignore_conflicts=True)
+        logger.info(f"Stock inicializado | Producto={self.id} | Registros={len(stocks)}")
 
     def _generar_codigo(self):
         """Genera código único: PRODUCTO-CATEGORIA-0001"""
@@ -515,7 +517,6 @@ class Bodega(BaseModel):
     # ==================== MÉTODOS PRIVADOS ====================
     def _inicializar_stock_productos(self):
         """Crea stock para todos los productos activos"""
-        from apps.inventario.models import Producto, Stock
 
         productos = Producto.objects.filter(empresa=self.empresa, is_active=True, deleted_at__isnull=True)
 
@@ -700,7 +701,7 @@ class MovimientoInventario(BaseModel):
     ]
 
     # ==================== CAMPOS ====================
-    numero = models.CharField(max_length=20, verbose_name="Número de Movimiento", editable=False)
+    numero = models.CharField(max_length=50, verbose_name="Número de Movimiento", editable=False)
     fecha = models.DateTimeField(auto_now_add=True, verbose_name="Fecha")
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, verbose_name="Tipo de Movimiento")
     bodega_origen = models.ForeignKey(Bodega, on_delete=models.PROTECT, related_name='movimientos_origen', null=True, blank=True, verbose_name="Bodega Origen")

@@ -293,58 +293,59 @@ export interface InventarioBodega {
 export interface Producto {
     id: string
     codigo: string
-    codigo_aux?: string
+    codigo_aux?: string | null
     nombre: string
     descripcion?: string
     tipo: 'simple' | 'kit' | 'servicio'
-    es_kit: boolean
     tipo_display?: string
+    es_kit: boolean
 
-    // Relaciones — IDs para enviar, nombres para mostrar, detalle para renderizar
-    categoria?: string
-    categoria_nombre?: string
-    categoria_detalle?: Categoria
+    // Relaciones (detail)
+    categoria?: { id: string; nombre: string; codigo: string } | null
+    marca?: { id: string; nombre: string } | null
+    unidad_medida?: { id: string; nombre: string; abreviatura: string } | null
 
-    marca?: string
-    marca_nombre?: string
-    marca_detalle?: Marca
-
-    unidad_medida?: number
-    unidad_medida_nombre?: string
-    unidad_medida_detalle?: UnidadMedida
-
-    // Precios y stock
+    // Precios
     precio_compra?: number
     precio_venta: number
-    stock: number
     stock_minimo: number
-    stock_estado?: 'agotado' | 'bajo' | 'medio' | 'normal'
-
-    // Atributos
+    costo_promedio?: number
+    ultimo_costo?: number
+    margen_ganancia?: { monto: number; porcentaje: number } | null
     iva: boolean
+
+    // Características
     codigo_barras?: string
     es_perecedero: boolean
-    dias_vida_util?: number
-    peso?: number
+    dias_vida_util?: number | null
+    peso?: number | null
     imagen?: string | null
-    is_active: boolean
 
-    // Metadatos
-    created_at?: string
-    updated_at?: string
-
-    // Calculados
-    estado?: string
-    margen_ganancia?: { monto: number; porcentaje: number }
+    // Stock
+    stock_total?: number
+    stock_estado?: 'normal' | 'medio' | 'bajo' | 'agotado'
+    inventarios?: StockBodega[]
 
     // Kit
-    componentes_detalle?: KitComponente[]
-    total_componentes?: number
-    costo_componentes?: number | null
+    componentes?: Componente[]
+    conversiones?: UnidadConversion[] | null | undefined
 
-    // Inventario
-    inventarios?: InventarioBodega[]
-    conversiones_detalle?: UnidadConversion[]
+    // Meta
+    is_active: boolean
+    created_at?: string
+    updated_at?: string
+}
+
+export interface StockBodega {
+    id: string
+    bodega: string
+    bodega_nombre: string
+    bodega_codigo: string
+    es_principal: boolean
+    permite_ventas: boolean
+    cantidad: number
+    stock_reservado: number
+    cantidad_disponible: number
 }
 
 export type ProductoCreate = Omit<Producto,
@@ -392,6 +393,26 @@ export interface Bodega {
     valor_total_inventario?: number
     responsable_nombre?: string
     ciudad_nombre?: string
+}
+
+
+// ============================================================
+// COMPONENTES
+// ============================================================
+
+export interface Componente {
+    id: string
+    componente: string          // UUID del producto componente
+    componente_nombre?: string
+    componente_codigo?: string
+    componente_precio?: number
+    cantidad: number
+    es_opcional: boolean
+    observaciones?: string
+    // Campos locales (solo en frontend, no vienen del API)
+    nombre?: string
+    codigo?: string
+    precio_venta?: number
 }
 
 

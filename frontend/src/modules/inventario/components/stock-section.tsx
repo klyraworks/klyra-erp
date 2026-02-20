@@ -192,7 +192,7 @@ interface StockSectionProps {
 }
 
 export function StockSection({compact = false}: StockSectionProps) {
-    const {data: inventario, isLoading, error} = useStock(true)
+    const {data: inventario, isLoading, error} = useStock()
     const router = useRouter()
     const [selectedInventario, setSelectedInventario] = useState<StockItem | null>(null)
     const [modalAjustarStock, setModalAjustarStock] = useState(false)

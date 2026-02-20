@@ -216,66 +216,13 @@ export async function viewProducto(producto: Producto): Promise<Producto> {
     })
 }
 
-export async function duplicarProducto(
-    productoId: string,
-    payload: DuplicarProductoPayload
-): Promise<Producto> {
-    const resultado = await apiFetch<{ message: string; producto_nuevo: Producto }>(
-        `/api/productos/${productoId}/duplicar/`,
-        {
-            method: "POST",
-            body: JSON.stringify(payload),
-        }
-    )
-
-    mutate("/api/productos/")
-    return resultado.producto_nuevo
-}
-
-export async function agregarImagenProducto(
-    productoId: string,
-    imagen: File
-): Promise<{ imagen_url: string; producto: Producto }> {
-    const formData = new FormData()
-    formData.append("imagen", imagen)
-
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    const response = await fetch(`${API_BASE_URL}/api/productos/${productoId}/agregar-imagen/`, {
-        method: "POST",
-        credentials: 'include',
-        body: formData,
-    })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({error: 'Error al subir imagen'}))
-        throw new Error(error.error || error.message || 'Error al subir imagen')
-    }
-
-    const resultado = await response.json()
-    mutate("/api/productos/")
-    return resultado
-}
-
-export async function getInventarioTotal(productoId: string): Promise<InventarioTotalResponse> {
-    return await apiFetch<InventarioTotalResponse>(
-        `/api/productos/${productoId}/inventario-total/`,
-        {method: "GET"}
-    )
-}
-
-export async function getEtiquetaProducto(productoId: string): Promise<EtiquetaProductoResponse> {
-    return await apiFetch<EtiquetaProductoResponse>(
-        `/api/productos/${productoId}/imprimir-etiqueta/`,
-        {method: "GET"}
-    )
-}
 
 export async function ajustarStockBodega(
     stockId: string,
     payload: AjustarStockPayload
 ): Promise<any> {
     const resultado = await apiFetch(
-        `/api/stock/${stockId}/ajustar-stock/`,
+        `/api/stock/${stockId}/ajustar_stock/`,
         {
             method: "POST",
             body: JSON.stringify(payload),
@@ -308,7 +255,7 @@ export async function reservarStockBodega(
     payload: ReservarStockPayload
 ): Promise<any> {
     const resultado = await apiFetch(
-        `/api/stock/${stockId}/reservar-stock/`,
+        `/api/stock/${stockId}/reservar_stock/`,
         {
             method: "POST",
             body: JSON.stringify(payload),
@@ -333,8 +280,49 @@ export async function getKardex(
     return await apiFetch(url, {method: "GET"})
 }
 
-export function useStock(soloConStock: boolean = true) {
-    const url = `/api/stock/${soloConStock ? '?solo_con_stock=true' : ''}`
-    const result = useSWR<StockItem[] | PaginatedResponse<StockItem>>(url, swrFetcher)
+export function useStock() {
+    const result = useSWR<StockItem[] | PaginatedResponse<StockItem>>('/api/stock/', swrFetcher)
     return {...result, data: extractArray(result.data)}
+}
+
+export async function agregarImagenProducto(
+    productoId: string,
+    imagen: File
+): Promise<{ imagen_url: string }> {
+    const formData = new FormData()
+    formData.append('imagen', imagen)
+
+    return await apiFetch(`/api/productos/${productoId}/agregar_imagen/`, {
+        method: 'POST',
+        body: formData,
+    })
+}
+
+export async function duplicarProducto(
+    productoId: string,
+    payload: DuplicarProductoPayload
+): Promise<Producto> {
+    const resultado = await apiFetch<Producto>(
+        `/api/productos/${productoId}/duplicar/`,
+        {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }
+    )
+    mutate('/api/productos/')
+    return resultado
+}
+
+export async function getInventarioTotal(productoId: string): Promise<InventarioTotalResponse> {
+    return await apiFetch<InventarioTotalResponse>(
+        `/api/productos/${productoId}/inventario_total/`,
+        {method: 'GET'}
+    )
+}
+
+export async function getEtiquetaProducto(productoId: string): Promise<EtiquetaProductoResponse> {
+    return await apiFetch<EtiquetaProductoResponse>(
+        `/api/productos/${productoId}/imprimir_etiqueta/`,
+        {method: 'GET'}
+    )
 }

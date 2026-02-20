@@ -66,7 +66,8 @@ async function refreshToken(): Promise<boolean> {
         })
 
         if (res.ok) {
-            const data = await res.json()
+            const text = await res.text()
+            const data = text ? JSON.parse(text) : null
             localStorage.setItem('access_token', data.access)
             if (data.refresh) localStorage.setItem('refresh_token', data.refresh)
             console.log('✅ Token refrescado exitosamente')
@@ -119,7 +120,8 @@ export async function login(username: string, password: string): Promise<{
 
     console.log('📥 Login response status:', res.status)
 
-    const data = await res.json()
+    const text = await res.text()
+    const data = text ? JSON.parse(text) : null
 
     if (!res.ok) {
         console.warn('❌ Login fallido:', data)
@@ -183,7 +185,8 @@ export async function checkAuth(): Promise<{
     console.log('📥 CheckAuth status:', res.status)
 
     if (res.ok) {
-        const data = await res.json()
+        const text = await res.text()
+        const data = text ? JSON.parse(text) : null
         console.log('✅ Usuario autenticado:', data.data?.user?.username)
         return { authenticated: true, ...data.data }
     }
@@ -224,7 +227,8 @@ export async function apiFetch<T>(endpoint: string, options?: RequestInit): Prom
     console.log(`📥 [${method}] ${endpoint} → status: ${res.status}`)
 
     if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
+        const text = await res.text()
+        const data = text ? JSON.parse(text) : null
 
         if (res.status === 401) {
             console.log('🔄 Token expirado en apiFetch, intentando refresh...')
@@ -244,7 +248,8 @@ export async function apiFetch<T>(endpoint: string, options?: RequestInit): Prom
         throw parseApiError(data, res.status)
     }
 
-    const data = await res.json()
+    const text = await res.text()
+    const data = text ? JSON.parse(text) : null
 
     // Estándar de respuesta: retornar solo data.data
     if (data && typeof data === 'object' && 'success' in data && 'data' in data) {

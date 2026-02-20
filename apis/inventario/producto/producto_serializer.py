@@ -1,704 +1,387 @@
-# apis/inventario/producto/producto_serializer.py
 import logging
-
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from apis.core.SerializerBase import TenantSerializer
-from apis.inventario.categoria.categoria_viewset import CategoriaSerializer
-from apis.inventario.bodega.bodega_serializer import BodegaSerializer, BodegaSimpleSerializer
-from apis.inventario.marca.marca_viewset import MarcaSerializer
-from apis.inventario.unidad_medida.unidad_medida_viewset import UnidadMedidaSerializer
-from apps.inventario.models import (Producto, Marca, UnidadMedida, KitComponente, UnidadConversion, Stock)
-from utils.validators import BusinessValidators
+from apis.inventario.unidadconversion.unidadconversion_serializer import UnidadConversionSerializer
+from apis.inventario.kitcomponente.kitcomponente_serializer import KitComponenteSerializer
+from apps.inventario.models import (
+    Producto, Categoria, Marca, UnidadMedida,
+    KitComponente, UnidadConversion, Stock
+)
 
-# ==================== SERIALIZERS AUXILIARES ====================
 
-class KitComponenteSerializer(TenantSerializer):
-    """Serializer para componentes de kits"""
-    componente_nombre = serializers.CharField(source='componente.nombre', read_only=True)
-    componente_codigo = serializers.CharField(source='componente.codigo', read_only=True)
-    componente_precio = serializers.DecimalField(source='componente.precio_venta', max_digits=10, decimal_places=2, read_only=True)
+logger = logging.getLogger('apps.inventario')
+
+
+# ==================== AUXILIARES ====================
+
+class StockBodegaSerializer(TenantSerializer):
+    bodega_nombre  = serializers.CharField(source='bodega.nombre', read_only=True)
+    bodega_codigo  = serializers.CharField(source='bodega.codigo', read_only=True)
+    es_principal   = serializers.BooleanField(source='bodega.es_principal', read_only=True)
+    permite_ventas = serializers.BooleanField(source='bodega.permite_ventas', read_only=True)
+    cantidad_disponible = serializers.DecimalField(
+        max_digits=10, decimal_places=2, coerce_to_string=False, read_only=True
+    )
 
     class Meta:
-        model = KitComponente
+        model  = Stock
         fields = [
-            'id', 'componente', 'componente_nombre', 'componente_codigo',
-            'componente_precio', 'cantidad', 'es_opcional', 'observaciones'
+            'id', 'bodega', 'bodega_nombre', 'bodega_codigo',
+            'es_principal', 'permite_ventas',
+            'cantidad', 'stock_reservado', 'cantidad_disponible',
         ]
         read_only_fields = ['id']
 
 
-class UnidadConversionSerializer(TenantSerializer):
-    """Serializer para conversiones de unidades"""
-    unidad_origen_nombre = serializers.CharField(source='unidad_origen.nombre', read_only=True)
-    unidad_destino_nombre = serializers.CharField(source='unidad_destino.nombre', read_only=True)
+# ==================== LIST ====================
+
+class ProductoListSerializer(TenantSerializer):
+    categoria_nombre = serializers.CharField(source='categoria.nombre', read_only=True)
+    marca_nombre     = serializers.CharField(source='marca.nombre', read_only=True)
+    unidad_abrev     = serializers.CharField(source='unidad_medida.abreviatura', read_only=True)
+    stock_total      = serializers.SerializerMethodField()
+    stock_estado     = serializers.SerializerMethodField()
 
     class Meta:
-        model = UnidadConversion
+        model  = Producto
         fields = [
-            'id', 'unidad_origen', 'unidad_origen_nombre',
-            'unidad_destino', 'unidad_destino_nombre', 'factor_conversion'
+            'id', 'codigo', 'codigo_aux', 'nombre', 'tipo', 'es_kit',
+            'precio_venta', 'stock_minimo',
+            'categoria_nombre', 'marca_nombre', 'unidad_abrev',
+            'stock_total', 'stock_estado', 'is_active',
         ]
-        read_only_fields = ['id']
+
+    def get_stock_total(self, obj):
+        if hasattr(obj, 'stock_total_anotado'):
+            return obj.stock_total_anotado or 0
+        return sum(s.cantidad for s in obj.stocks.all())
+
+    def get_stock_estado(self, obj):
+        if hasattr(obj, 'stock_estado_calc'):
+            return obj.stock_estado_calc
+        stock = self.get_stock_total(obj)
+        return _calcular_stock_estado(stock, obj.stock_minimo)
 
 
-class StockSerializer(TenantSerializer):
-    """Serializer para conversiones de unidades"""
-    cantidad = serializers.IntegerField(read_only=True)
-    stock_reservado = serializers.IntegerField(read_only=True)
-    bodega = BodegaSimpleSerializer(read_only=True)
+# ==================== DETAIL ====================
 
-
-    class Meta:
-        model = Stock
-        fields = [
-            'id', 'cantidad', 'stock_reservado', 'bodega'
-        ]
-        read_only_fields = ['id']
-
-
-# ==================== SERIALIZER PRINCIPAL ====================
-
-
-class ProductoSerializer(TenantSerializer):
-    """
-    Serializer completo para gestión de productos.
-
-    Soporta:
-    - Productos simples
-    - Kits/paquetes con componentes
-    - Servicios
-    - Conversiones de unidades
-
-    OPTIMIZACIONES:
-    - Usa annotate del ViewSet para evitar queries en to_representation
-    - total_componentes_count (annotated)
-    - costo_componentes_sum (annotated)
-    - stock_estado_calc (annotated)
-    """
-
-    # READ-ONLY - Relaciones anidadas
-    categoria_detalle = CategoriaSerializer(source='categoria', read_only=True)
-    marca_detalle = MarcaSerializer(source='marca', read_only=True)
-    unidad_medida_detalle = UnidadMedidaSerializer(source='unidad_medida', read_only=True)
-    componentes_detalle = KitComponenteSerializer(source='componentes', many=True, read_only=True)
-    conversiones_detalle = UnidadConversionSerializer(source='conversiones', many=True, read_only=True)
-
-    # WRITE - Para crear/actualizar componentes de kit
-    componentes_data = KitComponenteSerializer(many=True, write_only=True, required=False)
-    conversiones_data = UnidadConversionSerializer(many=True, write_only=True, required=False)
-    inventarios = StockSerializer(many=True, read_only=True)
+class ProductoDetailSerializer(TenantSerializer):
+    categoria     = serializers.SerializerMethodField()
+    marca         = serializers.SerializerMethodField()
+    unidad_medida = serializers.SerializerMethodField()
+    precio_compra  = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
+    precio_venta   = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
+    costo_promedio = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False, read_only=True)
+    ultimo_costo   = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False, read_only=True)
+    componentes    = KitComponenteSerializer(many=True, read_only=True)
+    conversiones   = UnidadConversionSerializer(many=True, read_only=True)
+    inventarios    = serializers.SerializerMethodField()
+    margen_ganancia = serializers.SerializerMethodField()
+    stock_total     = serializers.SerializerMethodField()
+    stock_estado    = serializers.SerializerMethodField()
+    tipo_display    = serializers.CharField(source='get_tipo_display', read_only=True)
 
     class Meta:
-        model = Producto
+        model  = Producto
         fields = [
-            'id', 'codigo', 'nombre', 'descripcion', 'tipo', 'es_kit',
-            'categoria', 'categoria_detalle',
-            'marca', 'marca_detalle',
-            'unidad_medida', 'unidad_medida_detalle',
+            'id', 'codigo', 'codigo_aux', 'nombre', 'descripcion',
+            'categoria', 'marca', 'unidad_medida',
+            'tipo', 'tipo_display', 'es_kit',
             'precio_compra', 'precio_venta', 'stock_minimo',
-            'iva', 'codigo_barras', 'es_perecedero', 'dias_vida_util',
-            'peso', 'imagen', 'is_active',
-            'componentes_detalle', 'componentes_data',
-            'conversiones_detalle', 'conversiones_data',
-            'created_at', 'updated_at', 'inventarios'
+            'iva', 'codigo_barras',
+            'es_perecedero', 'dias_vida_util',
+            'peso', 'imagen',
+            'costo_promedio', 'ultimo_costo',
+            'margen_ganancia', 'stock_total', 'stock_estado',
+            'componentes', 'conversiones', 'inventarios',
+            'is_active', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'codigo', 'created_at', 'updated_at']
-        extra_kwargs = {
-            'categoria': {'required': False, 'allow_null': True},
-            'marca': {'required': False, 'allow_null': True},
-            'unidad_medida': {'required': False, 'allow_null': True},
-            'descripcion': {'required': False, 'allow_blank': True},
-            'codigo_barras': {'required': False, 'allow_blank': True},
-            'imagen': {'required': False, 'allow_null': True},
-        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.logger = logging.getLogger('producto_serializer')
-
-        # Si el usuario no tiene permiso para ver costos, ocultar precio_compra
         request = self.context.get('request')
         if request and not request.user.has_perm('inventario.ver_costo_compra'):
             self.fields.pop('precio_compra', None)
+            self.fields.pop('costo_promedio', None)
+            self.fields.pop('ultimo_costo', None)
+            self.fields.pop('margen_ganancia', None)
 
-    # ==================== SERIALIZATION ====================
+    def get_categoria(self, obj):
+        if obj.categoria:
+            return {'id': str(obj.categoria.id), 'nombre': obj.categoria.nombre, 'codigo': obj.categoria.codigo}
+        return None
 
-    def to_representation(self, instance):
-        """
-        Enriquece la respuesta con información calculada.
+    def get_marca(self, obj):
+        if obj.marca:
+            return {'id': str(obj.marca.id), 'nombre': obj.marca.nombre}
+        return None
 
-        Usa valores annotated en lugar de queries
-        """
-        data = super().to_representation(instance)
+    def get_unidad_medida(self, obj):
+        if obj.unidad_medida:
+            return {
+                'id': str(obj.unidad_medida.id),
+                'nombre': obj.unidad_medida.nombre,
+                'abreviatura': obj.unidad_medida.abreviatura,
+            }
+        return None
 
-        # Estado del producto
-        data['estado'] = 'Activo' if instance.is_active else 'Inactivo'
+    def get_margen_ganancia(self, obj):
+        if obj.precio_compra and obj.precio_venta and obj.precio_compra > 0:
+            margen = obj.precio_venta - obj.precio_compra
+            return {
+                'monto': float(margen),
+                'porcentaje': round(float((margen / obj.precio_compra) * 100), 2),
+            }
+        return None
 
-        # OPTIMIZACIÓN: Usar stock_estado_calc (annotated en ViewSet)
-        if hasattr(instance, 'stock_estado_calc'):
-            data['stock_estado'] = instance.stock_estado_calc
-        else:
-            # Fallback si no viene annotated (ej: en create/update)
-            data['stock_estado'] = self._get_stock_estado(instance)
+    def get_stock_total(self, obj):
+        if hasattr(obj, 'stock_total_anotado'):
+            return obj.stock_total_anotado or 0
+        return sum(s.cantidad for s in obj.stocks.all())
 
-        # Margen de ganancia (solo si puede ver costos)
+    def get_stock_estado(self, obj):
+        if hasattr(obj, 'stock_estado_calc'):
+            return obj.stock_estado_calc
+        return _calcular_stock_estado(self.get_stock_total(obj), obj.stock_minimo)
+
+    def get_inventarios(self, obj):
         request = self.context.get('request')
-        if request and request.user.has_perm('inventario.ver_costo_compra'):
-            if instance.precio_compra and instance.precio_venta:
-                margen = instance.precio_venta - instance.precio_compra
-                margen_porcentaje = (margen / instance.precio_compra) * 100
-                data['margen_ganancia'] = {
-                    'monto': float(margen),
-                    'porcentaje': round(float(margen_porcentaje), 2)
-                }
+        stocks = obj.stocks.select_related('bodega', 'ubicacion').all()
+        if request and not request.user.has_perm('inventario.view_stock_todas_bodegas'):
+            stocks = stocks.filter(bodega__responsable__usuario=request.user)
+        return StockBodegaSerializer(stocks, many=True).data
 
-        # OPTIMIZACIÓN: Información de kit sin queries adicionales
-        if instance.es_kit:
-            # Usar annotate en lugar de .count()
-            if hasattr(instance, 'total_componentes_count'):
-                data['total_componentes'] = instance.total_componentes_count
-            else:
-                # Fallback: Si viene con prefetch_related, no hace query extra
-                data['total_componentes'] = len(instance.componentes.all())
 
-            # Usar annotate en lugar de loop
-            if hasattr(instance, 'costo_componentes_sum'):
-                data['costo_componentes'] = float(instance.costo_componentes_sum or 0)
-            else:
-                # Fallback: Calcular solo si no viene annotated
-                data['costo_componentes'] = self._calcular_costo_kit(instance)
+# ==================== CREATE ====================
 
-        # Tipo legible
-        data['tipo_display'] = instance.get_tipo_display()
+class ProductoCreateSerializer(serializers.Serializer):
+    nombre           = serializers.CharField(max_length=200)
+    descripcion      = serializers.CharField(required=False, allow_blank=True)
+    codigo_aux       = serializers.CharField(max_length=50, required=False, allow_null=True)
+    categoria_id     = serializers.UUIDField()
+    marca_id         = serializers.UUIDField(required=False, allow_null=True)
+    unidad_medida_id = serializers.IntegerField()
+    tipo             = serializers.ChoiceField(choices=['simple', 'kit', 'servicio'])
+    es_kit           = serializers.BooleanField(default=False)
+    precio_compra    = serializers.DecimalField(max_digits=10, decimal_places=2)
+    precio_venta     = serializers.DecimalField(max_digits=10, decimal_places=2)
+    stock_minimo     = serializers.DecimalField(max_digits=10, decimal_places=2, default=0)
+    iva              = serializers.BooleanField(default=False)
+    codigo_barras    = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    es_perecedero    = serializers.BooleanField(default=False)
+    dias_vida_util   = serializers.IntegerField(required=False, allow_null=True)
+    peso             = serializers.DecimalField(max_digits=8, decimal_places=3, required=False, allow_null=True)
+    imagen           = serializers.ImageField(required=False, allow_null=True)
+    componentes_data = KitComponenteSerializer(many=True, required=False, write_only=True)
+    conversiones_data = UnidadConversionSerializer(many=True, required=False, write_only=True)
 
-        return data
+    def validate_categoria_id(self, value):
+        empresa = self.context['request'].empresa
+        if not Categoria.objects.filter(id=value, empresa=empresa, deleted_at__isnull=True).exists():
+            raise ValidationError("La categoría no existe o no pertenece a esta empresa.")
+        return value
 
-    def _get_stock_estado(self, instance):
-        """Determina el estado del stock (fallback si no viene annotated)"""
-        if instance.stock <= 0:
-            return 'agotado'
-        elif instance.stock <= instance.stock_minimo:
-            return 'bajo'
-        elif instance.stock <= instance.stock_minimo * 1.5:
-            return 'medio'
-        return 'normal'
+    def validate_marca_id(self, value):
+        if value is None:
+            return value
+        empresa = self.context['request'].empresa
+        if not Marca.objects.filter(id=value, empresa=empresa, deleted_at__isnull=True).exists():
+            raise ValidationError("La marca no existe o no pertenece a esta empresa.")
+        return value
 
-    def _calcular_costo_kit(self, instance):
-        """
-        Calcula el costo total de los componentes del kit.
-        Solo se usa como fallback si no viene annotated
-        """
-        try:
-            # Si viene con prefetch_related, esto no genera queries
-            total = sum(
-                comp.componente.precio_compra * comp.cantidad
-                for comp in instance.componentes.all()
-            )
-            return float(total)
-        except:
-            return 0
-
-    # ==================== VALIDATIONS ====================
+    def validate_unidad_medida_id(self, value):
+        if not UnidadMedida.objects.filter(id=value).exists():
+            raise ValidationError("La unidad de medida no existe.")
+        return value
 
     def validate_nombre(self, value):
-        """Valida unicidad del nombre"""
         value = value.strip()
-        empresa = self.get_empresa_from_context()
-
-        if self.instance and self.instance.nombre == value:
-            return value
-
-        if Producto.objects.filter(nombre__iexact=value, empresa=empresa).exists():
-            raise serializers.ValidationError(f"El producto: [{value.upper()}] ya existe")
-
+        empresa = self.context['request'].empresa
+        if Producto.objects.filter(nombre__iexact=value, empresa=empresa, deleted_at__isnull=True).exists():
+            raise ValidationError(f"Ya existe un producto con el nombre '{value}'.")
         return value
 
     def validate_codigo_barras(self, value):
-        """Valida código de barras si existe"""
         if not value:
             return value
-
-        value = value.strip()
-
-        if self.instance and self.instance.codigo_barras == value:
-            return value
-
-        if Producto.objects.filter(codigo_barras=value).exists():
-            raise serializers.ValidationError(f"El código de barras {value} ya está registrado")
-
-        return value
-
-    def validate_precio_compra(self, value):
-        """Valida precio de compra"""
-        if value < 0:
-            raise serializers.ValidationError("El precio de compra <strong>no puede ser negativo</strong>")
+        empresa = self.context['request'].empresa
+        if Producto.objects.filter(codigo_barras=value, empresa=empresa, deleted_at__isnull=True).exists():
+            raise ValidationError(f"El código de barras '{value}' ya está registrado.")
         return value
 
     def validate_precio_venta(self, value):
-        """Valida que el precio de venta sea positivo y no exceda límites razonables"""
         if value <= 0:
-            raise serializers.ValidationError("El precio de venta debe <strong>ser mayor a 0</strong>")
-        # if value > 1000000:
-        #     raise serializers.ValidationError("El precio de venta excede el límite permitido")
+            raise ValidationError("El precio de venta debe ser mayor a 0.")
         return value
 
-    def validate_stock(self, value):
-        """Valida stock"""
+    def validate_precio_compra(self, value):
         if value < 0:
-            raise serializers.ValidationError("El stock no puede ser negativo")
+            raise ValidationError("El precio de compra no puede ser negativo.")
         return value
-
-    def validate_stock_minimo(self, value):
-        """Valida stock mínimo"""
-        if value < 0:
-            raise serializers.ValidationError("El stock mínimo no puede ser negativo")
-        return value
-
-    def validate_dias_vida_util(self, value):
-        """Valida días de vida útil para productos perecederos"""
-        if value is not None and value <= 0:
-            raise serializers.ValidationError("Los días de vida útil deben ser mayores a 0")
-        return value
-
-    def validate_peso(self, value):
-        """Valida peso del producto"""
-        if value is not None and value <= 0:
-            raise serializers.ValidationError("El peso debe ser mayor a 0")
-        return value
-
-    # ==================== CROSS-FIELD VALIDATION ====================
 
     def validate(self, attrs):
-        """Validaciones cruzadas"""
-        tipo = attrs.get('tipo', getattr(self.instance, 'tipo', 'simple'))
-        es_kit = attrs.get('es_kit', getattr(self.instance, 'es_kit', False))
-        es_perecedero = attrs.get('es_perecedero', getattr(self.instance, 'es_perecedero', False))
-
-        # Validar coherencia tipo-es_kit
-        if tipo == 'kit' and not es_kit:
+        es_kit = attrs.get('es_kit', False)
+        tipo   = attrs.get('tipo')
+        if es_kit and tipo != 'kit':
+            raise ValidationError({"tipo": "Si es_kit es True, el tipo debe ser 'kit'."})
+        if tipo == 'kit':
             attrs['es_kit'] = True
-        elif tipo != 'kit' and es_kit:
-            raise serializers.ValidationError("Si es_kit=True, el tipo debe ser [kit]")
-
-        # Validar días de vida útil para perecederos
-        if es_perecedero:
-            dias = attrs.get('dias_vida_util', getattr(self.instance, 'dias_vida_util', None))
-            if not dias:
-                raise serializers.ValidationError("Los productos perecederos requieren días de vida útil")
-
-        # Validar precio de venta > precio de compra
-        precio_compra = attrs.get('precio_compra', getattr(self.instance, 'precio_compra', None))
-        precio_venta = attrs.get('precio_venta', getattr(self.instance, 'precio_venta', None))
-
-        if precio_compra and precio_venta and precio_venta <= precio_compra:
-            self.logger.warning(
-                f"Precio de venta ({precio_venta}) menor o igual al de compra ({precio_compra})"
-            )
-
-        # Validar que kits no tengan stock manual
-        if es_kit and 'stock' in attrs and attrs['stock'] != 0:
-            self.logger.warning("Los kits no deberían tener stock manual, se calcula por componentes")
-
+        if attrs.get('es_perecedero') and not attrs.get('dias_vida_util'):
+            raise ValidationError({"dias_vida_util": "Los productos perecederos requieren días de vida útil."})
         return attrs
 
-    # ==================== CREATE ====================
 
-    def create(self, validated_data):
-        """Crea producto con componentes y conversiones en transacción"""
-        componentes_data = validated_data.pop('componentes_data', [])
-        conversiones_data = validated_data.pop('conversiones_data', [])
+# ==================== UPDATE ====================
 
-        try:
-            with transaction.atomic():
-                # 1. Crear producto
-                validated_data['stock'] = 0
-                validated_data['is_active'] = True
-                validated_data['empresa'] = self.get_empresa_from_context()
-                producto = Producto.objects.create(**validated_data)
-
-                self.logger.info(
-                    f"Producto creado: {producto.id} - {producto.codigo}",
-                    extra={
-                        'producto_id': producto.id,
-                        'codigo': producto.codigo,
-                        'nombre': producto.nombre,
-                        'tipo': producto.tipo
-                    }
-                )
-
-                # 2. Crear componentes si es kit
-                if producto.es_kit and componentes_data:
-                    self._crear_componentes(producto, componentes_data)
-
-                # 3. Crear conversiones de unidades
-                if conversiones_data:
-                    self._crear_conversiones(producto, conversiones_data)
-
-                return producto
-
-        except Exception as e:
-            self.logger.exception(f"Error creando producto: {str(e)}")
-            raise serializers.ValidationError(f"Error al crear producto: {str(e)}")
-
-    def _crear_componentes(self, producto, componentes_data):
-        componentes = []
-
-        try:
-            for comp_data in componentes_data:
-                componente = comp_data['componente']
-
-                if componente.id == producto.id:
-                    raise serializers.ValidationError(
-                        "Un producto no puede ser componente de sí mismo"
-                    )
-
-                if componente.es_kit:
-                    raise serializers.ValidationError(
-                        "Los kits no pueden contener otros kits como componentes"
-                    )
-
-                componentes.append(
-                    KitComponente(
-                        kit=producto,
-                        componente=componente,
-                        cantidad=comp_data['cantidad'],
-                        es_opcional=comp_data.get('es_opcional', False),
-                        observaciones=comp_data.get('observaciones', ''),
-                        empresa=producto.empresa
-
-                    )
-                )
-
-            KitComponente.objects.bulk_create(componentes)
-            self.logger.info(f"Componentes creados para kit {producto.id}: {len(componentes_data)}")
-        except Exception as e:
-            self.logger.exception(f"Error creando componentes para kit {producto.id}: {str(e)}")
-            raise serializers.ValidationError(f"Error al crear componentes del kit: {str(e)}")
-
-    def _crear_conversiones(self, producto, conversiones_data):
-        """Crea conversiones de unidades"""
-        conversiones = []
-
-        for conv_data in conversiones_data:
-
-            if conv_data['unidad_origen'] == conv_data['unidad_destino']:
-                raise ValidationError("La unidad de origen y destino no pueden ser iguales")
-
-            conversiones.append(
-                UnidadConversion(
-                    producto=producto,
-                    unidad_origen=conv_data['unidad_origen'],
-                    unidad_destino=conv_data['unidad_destino'],
-                    factor_conversion=conv_data['factor_conversion'],
-                    empresa=producto.empresa
-                )
-            )
-
-        self.logger.info(f"Conversiones creadas para producto {producto.id}: {len(conversiones_data)}")
-
-    # ==================== UPDATE ====================
-
-    def update(self, instance, validated_data):
-        """Actualiza producto con tracking de cambios"""
-        componentes_data = validated_data.pop('componentes_data', None)
-        conversiones_data = validated_data.pop('conversiones_data', None)
-
-        try:
-            with transaction.atomic():
-                cambios_criticos = {}
-
-                # 1. Actualizar campos del producto
-                for field, value in validated_data.items():
-                    old_value = getattr(instance, field)
-                    if old_value != value:
-                        # Trackear cambios críticos
-                        if field in ['precio_compra', 'precio_venta', 'stock']:
-                            cambios_criticos[field] = {
-                                'anterior': str(old_value),
-                                'nuevo': str(value)
-                            }
-                        setattr(instance, field, value)
-
-                instance.save()
-
-                # 2. Actualizar componentes si es kit
-                if componentes_data is not None and instance.es_kit:
-                    # Eliminar componentes existentes
-                    instance.componentes.all().delete()
-                    # Crear nuevos componentes
-                    self._crear_componentes(instance, componentes_data)
-
-                # 3. Actualizar conversiones
-                if conversiones_data is not None:
-                    instance.conversiones.all().delete()
-                    self._crear_conversiones(instance, conversiones_data)
-
-                # Log
-                log_data = {
-                    'producto_id': instance.id,
-                    'codigo': instance.codigo
-                }
-
-                if cambios_criticos:
-                    log_data['cambios_criticos'] = cambios_criticos
-
-                self.logger.info(
-                    f"Producto {instance.id} actualizado",
-                    extra=log_data
-                )
-
-                return instance
-
-        except Exception as e:
-            self.logger.exception(f"Error actualizando producto: {str(e)}")
-            raise
-
-
-# ==================== SERIALIZER SIMPLIFICADO ====================
-
-class ProductoSimpleSerializer(TenantSerializer):
-    """
-    Serializer simplificado para listados rápidos.
-
-    Usa stock_estado_calc annotated del ViewSet
-    """
-    categoria_nombre = serializers.CharField(source='categoria.nombre', read_only=True)
-    marca_nombre = serializers.CharField(source='marca.nombre', read_only=True)
-    stock_estado = serializers.SerializerMethodField()
-    unidad_medida = serializers.CharField(source='unidad_medida.nombre', read_only=True)
-    inventarios = StockSerializer(many=True, read_only=True)
+class ProductoUpdateSerializer(TenantSerializer):
+    categoria_id      = serializers.UUIDField(required=False, allow_null=True, write_only=True)
+    marca_id          = serializers.UUIDField(required=False, allow_null=True, write_only=True)
+    unidad_medida_id  = serializers.IntegerField(required=False, write_only=True)
+    componentes_data  = KitComponenteSerializer(many=True, required=False, write_only=True)
+    conversiones_data = UnidadConversionSerializer(many=True, required=False, write_only=True)
 
     class Meta:
-        model = Producto
+        model  = Producto
         fields = [
-            'id', 'codigo', 'codigo_aux', 'nombre', 'tipo', 'precio_venta', 'stock_minimo', 'stock_estado',
-            'categoria_nombre', 'marca_nombre', 'is_active',
-            'descripcion', 'unidad_medida', 'inventarios'
+            'nombre', 'descripcion', 'codigo_aux',
+            'categoria_id', 'marca_id', 'unidad_medida_id',
+            'tipo', 'es_kit',
+            'precio_compra', 'precio_venta', 'stock_minimo',
+            'iva', 'codigo_barras',
+            'es_perecedero', 'dias_vida_util',
+            'peso', 'imagen',
+            'componentes_data', 'conversiones_data',
         ]
 
-    def get_stock_estado(self, obj):
-        """
-        Usar annotate si existe, fallback a cálculo
-        """
-        if hasattr(obj, 'stock_estado_calc'):
-            return obj.stock_estado_calc
+    def validate_nombre(self, value):
+        value = value.strip()
+        empresa = self.context['request'].empresa
+        qs = Producto.objects.filter(nombre__iexact=value, empresa=empresa, deleted_at__isnull=True)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError(f"Ya existe un producto con el nombre '{value}'.")
+        return value
 
-        # Fallback: calcular desde stocks
-        stock_total = sum(s.cantidad for s in obj.stocks.all())
+    def validate_codigo_barras(self, value):
+        if not value:
+            return value
+        empresa = self.context['request'].empresa
+        qs = Producto.objects.filter(codigo_barras=value, empresa=empresa, deleted_at__isnull=True)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError(f"El código de barras '{value}' ya está registrado.")
+        return value
 
-        if stock_total <= 0:
-            return 'agotado'
-        elif stock_total <= obj.stock_minimo:
-            return 'bajo'
-        elif stock_total <= obj.stock_minimo * 1.5:
-            return 'medio'
-        return 'normal'
+    def validate_categoria_id(self, value):
+        if value is None:
+            return value
+        empresa = self.context['request'].empresa
+        if not Categoria.objects.filter(id=value, empresa=empresa, deleted_at__isnull=True).exists():
+            raise ValidationError("La categoría no existe o no pertenece a esta empresa.")
+        return value
 
-"""
-Ejemplo de JSON para crear un producto simple:
-{
-    "productos": [
-        {
-            "nombre": "Discos de freno Yamaha YZF-R3",
-            "descripcion": "Disco de freno delantero perforado para Yamaha YZF-R3 2020-2023",
-            "tipo": "simple",
-            "es_kit": false,
-            "categoria": "a30aea77-6e33-47bf-9ec9-6c5f02f99ee9",
-            "marca": "9f356665-4db4-424a-aafb-43f5acc1d75a",
-            "unidad_medida": "12df4fc9-4329-4182-a6b4-e8994710dbc9",
-            "precio_compra": 95.00,
-            "precio_venta": 135.00,
-            "stock_minimo": 3,
-            "iva": true,
-            "codigo_barras": "7501334562903",
-            "es_perecedero": false,
-            "peso": 2.8
-        },
-        {
-            "nombre": "Alternador Honda CBR 600RR",
-            "descripcion": "Alternador completo 12V para Honda CBR 600RR 2015-2020",
-            "tipo": "simple",
-            "es_kit": false,
-            "categoria": "032503ac-1d8a-489d-8ed6-6d1b34f074f1",
-            "marca": "1f90553e-ee91-42cd-9d3a-5f16127443d7",
-            "unidad_medida": "5ef5bce5-0c50-43dc-8f90-d300b864bd59",
-            "precio_compra": 120.00,
-            "precio_venta": 165.00,
-            "stock_minimo": 2,
-            "iva": true,
-            "codigo_barras": "7501334562904",
-            "es_perecedero": false,
-            "peso": 3.2
-        },
-        {
-            "nombre": "Kit de embrague Suzuki GSX-R750",
-            "descripcion": "Kit completo de embrague húmedo para Suzuki GSX-R750 2017-2022",
-            "tipo": "simple",
-            "es_kit": false,
-            "categoria": "3372122b-a2c9-4c1b-ab8f-6b64c306b853",
-            "marca": "9bcd244b-48d9-49c3-b2cf-c49ed816c096",
-            "unidad_medida": "a8992d0e-f190-42c3-9ce9-7df23294fd07",
-            "precio_compra": 180.00,
-            "precio_venta": 245.00,
-            "stock_minimo": 2,
-            "iva": true,
-            "codigo_barras": "7501334562905",
-            "es_perecedero": false,
-            "peso": 2.5
-        },
-        {
-            "nombre": "Horquilla invertida KTM Duke 390",
-            "descripcion": "Horquilla delantera invertida completa para KTM Duke 390 2017-2023",
-            "tipo": "simple",
-            "es_kit": false,
-            "categoria": "49f6ebd2-8b39-4fca-90aa-8d62493b22e7",
-            "marca": "baf63d49-cf8a-44d8-9844-bb88b330a8ca",
-            "unidad_medida": "5ef5bce5-0c50-43dc-8f90-d300b864bd59",
-            "precio_compra": 320.00,
-            "precio_venta": 420.00,
-            "stock_minimo": 1,
-            "iva": true,
-            "codigo_barras": "7501334562906",
-            "es_perecedero": false,
-            "peso": 8.5
-        },
-        {
-            "nombre": "Escape completo Ducati Panigale V4",
-            "descripcion": "Sistema de escape completo racing para Ducati Panigale V4 2018-2023",
-            "tipo": "simple",
-            "es_kit": false,
-            "categoria": "c687439a-08c1-4591-833c-34d267671bf7",
-            "marca": "57fda42c-dfa4-45b8-8f8c-3d51824be788",
-            "unidad_medida": "a8992d0e-f190-42c3-9ce9-7df23294fd07",
-            "precio_compra": 850.00,
-            "precio_venta": 1150.00,
-            "stock_minimo": 1,
-            "iva": true,
-            "codigo_barras": "7501334562907",
-            "es_perecedero": false,
-            "peso": 6.8
-        },
-        {
-            "nombre": "Carenaje Harley-Davidson Sportster",
-            "descripcion": "Juego de carenaje completo para Harley-Davidson Sportster 883",
-            "tipo": "simple",
-            "es_kit": false,
-            "categoria": "67369717-e3c5-4bfd-bf45-5dde18651779",
-            "marca": "670371aa-4587-494c-b232-4e2985108628",
-            "unidad_medida": "a8992d0e-f190-42c3-9ce9-7df23294fd07",
-            "precio_compra": 280.00,
-            "precio_venta": 380.00,
-            "stock_minimo": 2,
-            "iva": true,
-            "codigo_barras": "7501334562908",
-            "es_perecedero": false,
-            "peso": 5.2
-        },
-        {
-            "nombre": "Inyectores Kawasaki Ninja ZX-6R",
-            "descripcion": "Juego de 4 inyectores de combustible para Kawasaki Ninja ZX-6R",
-            "tipo": "simple",
-            "es_kit": false,
-            "categoria": "d1ed44e1-ab0b-43f6-a746-10bcee06d2c0",
-            "marca": "29816f6c-467a-4433-a491-3b1d1d91646d",
-            "unidad_medida": "19992f01-5657-4c2e-9a91-784fc541b201",
-            "precio_compra": 165.00,
-            "precio_venta": 225.00,
-            "stock_minimo": 2,
-            "iva": true,
-            "codigo_barras": "7501334562909",
-            "es_perecedero": false,
-            "peso": 1.8
-        },
-        {
-            "nombre": "Llantas de aleación Hero Xtreme",
-            "descripcion": "Par de llantas de aleación 17\" para Hero Xtreme 160R",
-            "tipo": "simple",
-            "es_kit": false,
-            "categoria": "79fbfd80-456a-49cb-af93-78dcddd82709",
-            "marca": "862dbf63-6a45-4698-ad57-515a9714e466",
-            "unidad_medida": "12df4fc9-4329-4182-a6b4-e8994710dbc9",
-            "precio_compra": 110.00,
-            "precio_venta": 155.00,
-            "stock_minimo": 2,
-            "iva": true,
-            "codigo_barras": "7501334562910",
-            "es_perecedero": false,
-            "peso": 12.3
-        },
-        {
-            "nombre": "Kit de herramientas premium",
-            "descripcion": "Set profesional de herramientas para motocicletas de alta gama",
-            "tipo": "simple",
-            "es_kit": false,
-            "categoria": "3a0cba58-027a-43b4-93e0-b2e9b7c42ea9",
-            "marca": "57fda42c-dfa4-45b8-8f8c-3d51824be788",
-            "unidad_medida": "a8992d0e-f190-42c3-9ce9-7df23294fd07",
-            "precio_compra": 75.00,
-            "precio_venta": 105.00,
-            "stock_minimo": 3,
-            "iva": true,
-            "codigo_barras": "7501334562911",
-            "es_perecedero": false,
-            "peso": 4.5
-        },
-        {
-            "nombre": "Radiador de aluminio TVS Apache RR310",
-            "descripcion": "Radiador de aluminio de alta eficiencia para TVS Apache RR310",
-            "tipo": "simple",
-            "es_kit": false,
-            "categoria": "d0c42171-bb36-46f1-b1cb-fc2708d592bb",
-            "marca": "c04430f1-0ac1-422a-a6cb-f49be9972810",
-            "unidad_medida": "5ef5bce5-0c50-43dc-8f90-d300b864bd59",
-            "precio_compra": 90.00,
-            "precio_venta": 125.00,
-            "stock_minimo": 3,
-            "iva": true,
-            "codigo_barras": "7501334562912",
-            "es_perecedero": false,
-            "peso": 2.7
-        }
-    ]
-}
+    def validate_marca_id(self, value):
+        if value is None:
+            return value
+        empresa = self.context['request'].empresa
+        if not Marca.objects.filter(id=value, empresa=empresa, deleted_at__isnull=True).exists():
+            raise ValidationError("La marca no existe o no pertenece a esta empresa.")
+        return value
 
-Ejemplo de JSON para crear un kit:
-{
-  "codigo": "KIT-001",
-  "nombre": "Kit Oficina Básico",
-  "descripcion": "Kit completo para equipar una oficina básica",
-  "tipo": "kit",
-  "es_kit": true,
-  "categoria": "c1045b78-ac22-4f84-8db1-2ab06fe54d97",
-  "marca": "7e8b3e97-ef24-4630-b95c-15086a565995",
-  "unidad_medida": "477fbd99-7a3e-4d8a-965c-cb4af2f9ee56",
-  "precio_compra": 800.00,
-  "precio_venta": 1100.00,
-  "stock": 0,
-  "stock_minimo": 0,
-  "iva": true,
-  "componentes_data": [
-    {
-      "componente": "9026e018-d67a-4f92-971f-3196bae20e16",
-      "cantidad": 1,
-      "es_opcional": false,
-      "observaciones": "Laptop Dell Inspiron 15"
-    },
-    {
-      "componente": "99f19516-ca40-4a88-99dc-8f6ff6e3a176",
-      "cantidad": 1,
-      "es_opcional": false,
-      "observaciones": "Mouse Dell 10k DPI"
-    },
-    {
-      "componente": "43bfa394-c964-4384-8443-85c91a5d5efd",
-      "cantidad": 1,
-      "es_opcional": true,
-      "observaciones": "Teclado mecánico"
-    }
-  ]
-}
+    def validate_unidad_medida_id(self, value):
+        if value is None:
+            return value
+        if not UnidadMedida.objects.filter(id=value).exists():
+            raise ValidationError("La unidad de medida no existe.")
+        return value
 
-"""
+    def validate(self, attrs):
+        es_kit = attrs.get('es_kit', self.instance.es_kit if self.instance else False)
+        tipo   = attrs.get('tipo', self.instance.tipo if self.instance else None)
+        if es_kit and tipo != 'kit':
+            raise ValidationError({"tipo": "Si es_kit es True, el tipo debe ser 'kit'."})
+        if attrs.get('es_perecedero', getattr(self.instance, 'es_perecedero', False)):
+            dias = attrs.get('dias_vida_util', getattr(self.instance, 'dias_vida_util', None))
+            if not dias:
+                raise ValidationError({"dias_vida_util": "Los productos perecederos requieren días de vida útil."})
+        return attrs
+
+    def update(self, instance, validated_data):
+        componentes_data  = validated_data.pop('componentes_data', ...)
+        conversiones_data = validated_data.pop('conversiones_data', ...)
+        categoria_id      = validated_data.pop('categoria_id', ...)
+        marca_id          = validated_data.pop('marca_id', ...)
+        unidad_medida_id  = validated_data.pop('unidad_medida_id', ...)
+
+        if categoria_id is not ...:
+            instance.categoria_id = categoria_id
+        if marca_id is not ...:
+            instance.marca_id = marca_id
+        if unidad_medida_id is not ...:
+            instance.unidad_medida_id = unidad_medida_id
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+
+        if componentes_data is not ... and instance.es_kit:
+            instance.componentes.all().delete()
+            _crear_componentes(instance, componentes_data)
+
+        if conversiones_data is not ...:
+            instance.conversiones.all().delete()
+            _crear_conversiones(instance, conversiones_data)
+
+        return instance
+
+
+# ==================== HELPERS COMPARTIDOS ====================
+
+def _calcular_stock_estado(stock_total, stock_minimo):
+    if not stock_total or stock_total <= 0:
+        return 'agotado'
+    elif stock_total <= stock_minimo:
+        return 'bajo'
+    elif stock_total <= stock_minimo * 1.5:
+        return 'medio'
+    return 'normal'
+
+
+def _crear_componentes(producto, componentes_data):
+    componentes = []
+    for comp_data in componentes_data:
+        componente = comp_data['componente']
+        if componente.id == producto.id:
+            raise ValidationError("Un producto no puede ser componente de sí mismo.")
+        if componente.es_kit:
+            raise ValidationError("Los kits no pueden contener otros kits como componentes.")
+        componentes.append(KitComponente(
+            kit=producto,
+            componente=componente,
+            cantidad=comp_data['cantidad'],
+            es_opcional=comp_data.get('es_opcional', False),
+            observaciones=comp_data.get('observaciones', ''),
+            empresa=producto.empresa,
+        ))
+    KitComponente.objects.bulk_create(componentes)
+
+
+def _crear_conversiones(producto, conversiones_data):
+    conversiones = []
+    for conv_data in conversiones_data:
+        if conv_data['unidad_origen'] == conv_data['unidad_destino']:
+            raise ValidationError("La unidad de origen y destino no pueden ser iguales.")
+        conversiones.append(UnidadConversion(
+            producto=producto,
+            unidad_origen=conv_data['unidad_origen'],
+            unidad_destino=conv_data['unidad_destino'],
+            factor_conversion=conv_data['factor_conversion'],
+            empresa=producto.empresa,
+        ))
+    UnidadConversion.objects.bulk_create(conversiones)

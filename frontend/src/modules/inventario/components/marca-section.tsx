@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import {Pagination} from "@/components/shared/Pagination";
 import {usePagination} from "@/hooks/use-pagination";
+import {CheckboxKlyra} from "@/components/ui/checkbox-klyra";
 
 const swrFetcher = (url: string) => apiFetch<{ results: MarcaListItem[]; count: number }>(url)
 
@@ -105,17 +106,12 @@ export function MarcasSection({compact = false}: MarcasSectionProps) {
                                 className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                             />
                         </div>
-                        <label
-                            className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition-all cursor-pointer select-none">
-                            <input
-                                type="checkbox"
-                                checked={incluirInactivas}
-                                onChange={(e) => setIncluirInactivas(e.target.checked)}
-                                className="accent-primary"
-                            />
-                            <i className="fa-solid fa-eye text-muted-foreground"></i>
-                            Incluir inactivas
-                        </label>
+                        <CheckboxKlyra
+                            checked={incluirInactivas}
+                            onChange={(e) => setIncluirInactivas(e)}
+                            label="Incluir inactivas"
+                            className=""
+                        />
                     </div>
                 </div>
 
