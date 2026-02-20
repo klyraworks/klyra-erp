@@ -1,0 +1,14 @@
+# Configuración completa desde cero
+python manage.py setup_inicial
+
+# Omitir migraciones (si ya están hechas)
+python manage.py setup_inicial --skip-migrations
+
+# Omitir ciudades (si ya están cargadas)
+python manage.py setup_inicial --skip-cities
+
+# Usar template demo en lugar de klyra
+python manage.py setup_inicial --empresa-template=demo
+
+# Configuración completa omitiendo pasos ya realizados
+python manage.py setup_inicial --skip-migrations --skip-cities

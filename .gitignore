@@ -1,0 +1,304 @@
+# ==========================================
+# PYTHON / DJANGO
+# ==========================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# C extensions
+*.c
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Django settings específicos
+Klyra/settings/local.py
+Klyra/settings/base.py
+Klyra/settings/development.py
+Klyra/settings/production.py
+Klyra/settings_copy.py
+
+# Django migrations (opcional - descomentar si no quieres versionar)
+**/migrations/*.py
+!**/migrations/__init__.py
+
+# Django static files
+/static/
+/staticfiles/
+/static_root/
+
+# Media files - Carpetas específicas excluidas
+media/certificados/
+media/facturas/
+media/productos/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.env.local
+.env.development
+.env.production
+.env.staging
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# ==========================================
+# REACT / NODE.JS / FRONTEND
+# ==========================================
+
+# Dependencies
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+
+# Testing
+frontend/coverage/
+
+# Production
+frontend/build/
+frontend/dist/
+
+# Misc
+.DS_Store
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Package managers
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# ==========================================
+# EDITORS / IDEs
+# ==========================================
+
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ==========================================
+# OPERATING SYSTEM
+# ==========================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ==========================================
+# DOCKER
+# ==========================================
+
+# Docker volumes
+docker-compose.override.yml
+.dockerignore
+
+# ==========================================
+# DATABASES
+# ==========================================
+
+*.sqlite
+*.sqlite3
+*.db
+
+# PostgreSQL
+*.sql
+*.dump
+
+# ==========================================
+# LOGS Y TEMP FILES
+# ==========================================
+
+logs/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids/
+*.pid
+*.seed
+
+# ==========================================
+# BACKUP Y ARCHIVOS TEMPORALES
+# ==========================================
+
+*.bak
+*.tmp
+*.temp
+*~
+.#*
+\#*#
+
+# ==========================================
+# CERTIFICADOS Y KEYS (SEGURIDAD)
+# ==========================================
+
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+
+# ==========================================
+# OTROS
+# ==========================================
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Documentación generada
+docs/_build/
+
+# Archivos de respaldo
+*.orig
+
+facturacion_null
+
+apps/facturacion

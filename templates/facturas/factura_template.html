@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factura Electrónica {{ venta.numero_factura }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4;
+            margin: 10mm;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 9pt;
+            color: #212842;
+            line-height: 1.4;
+            background: white;
+        }
+
+        .ride-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 15px;
+            border: 1px solid #212842;
+        }
+
+        /* HEADER - Estructura de 2 columnas */
+        .header {
+            display: table;
+            width: 100%;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #212842;
+            padding-bottom: 10px;
+        }
+
+        .header-emisor {
+            display: table-cell;
+            width: 60%;
+            vertical-align: top;
+            padding-right: 15px;
+        }
+
+        .header-factura {
+            display: table-cell;
+            width: 40%;
+            vertical-align: top;
+            border-left: 1px solid #212842;
+            padding-left: 15px;
+        }
+
+        .razon-social {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #212842;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .nombre-comercial {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #212842;
+            margin-bottom: 8px;
+        }
+
+        .datos-emisor {
+            font-size: 8pt;
+            line-height: 1.5;
+            color: #212842;
+        }
+
+        .datos-emisor div {
+            margin-bottom: 2px;
+        }
+
+        .label-bold {
+            font-weight: bold;
+        }
+
+        /* Recuadro de factura */
+        .box-factura {
+            border: 2px solid #212842;
+            padding: 10px;
+            background: #F0E7D5;
+        }
+
+        .titulo-factura {
+            font-size: 16pt;
+            font-weight: bold;
+            text-align: center;
+            color: #212842;
+            margin-bottom: 8px;
+        }
+
+        .numero-factura {
+            font-size: 10pt;
+            font-weight: bold;
+            text-align: center;
+            color: #212842;
+            margin-bottom: 6px;
+        }
+
+        .info-factura {
+            font-size: 8pt;
+            text-align: left;
+            color: #212842;
+            margin-top: 8px;
+        }
+
+        .info-factura div {
+            margin-bottom: 3px;
+        }
+
+        /* Clave de acceso con código de barras */
+        .clave-acceso-section {
+            border: 1px solid #212842;
+            padding: 10px;
+            background: white;
+        }
+
+        .barcode-simulation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60px;
+            background: white;
+            margin: 5px 0;
+        }
+
+        .barcode-bars {
+            display: flex;
+            gap: 1px;
+            height: 50px;
+        }
+
+        .bar {
+            width: 2px;
+            background: #212842;
+        }
+
+        .bar.thick {
+            width: 4px;
+        }
+
+        .bar.space {
+            background: transparent;
+        }
+
+        .clave-numeros {
+            font-family: 'Courier New', monospace;
+            font-size: 8pt;
+            text-align: center;
+            color: #212842;
+            letter-spacing: 1px;
+            margin-top: 5px;
+        }
+
+        /* Datos del comprador */
+        .seccion-comprador {
+            margin: 12px 0;
+            border: 1px solid #212842;
+            background: white;
+        }
+
+        .titulo-seccion {
+            background: #212842;
+            color: #F0E7D5;
+            padding: 6px 10px;
+            font-size: 9pt;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .contenido-seccion {
+            padding: 10px;
+        }
+
+        .dato-tabla {
+            display: table;
+            width: 100%;
+            margin-bottom: 4px;
+            font-size: 8pt;
+        }
+
+        .dato-label {
+            display: table-cell;
+            width: 35%;
+            font-weight: bold;
+            color: #212842;
+        }
+
+        .dato-valor {
+            display: table-cell;
+            width: 65%;
+            color: #212842;
+        }
+
+        /* Grid para secciones lado a lado */
+        .grid-dos-columnas {
+            display: table;
+            width: 100%;
+            border-spacing: 10px 0;
+        }
+
+        .columna {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+        }
+
+        /* Tabla de items */
+        .tabla-items {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            border: 1px solid #212842;
+            font-size: 8pt;
+        }
+
+        .tabla-items thead {
+            background: #212842;
+            color: #F0E7D5;
+        }
+
+        .tabla-items th {
+            padding: 8px 5px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #212842;
+            font-size: 8pt;
+        }
+
+        .tabla-items th.center {
+            text-align: center;
+        }
+
+        .tabla-items th.right {
+            text-align: right;
+        }
+
+        .tabla-items td {
+            padding: 6px 5px;
+            border: 1px solid #212842;
+            vertical-align: top;
+        }
+
+        .tabla-items td.center {
+            text-align: center;
+        }
+
+        .tabla-items td.right {
+            text-align: right;
+        }
+
+        /* Sección de totales */
+        .tabla-totales {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #212842;
+            font-size: 9pt;
+        }
+
+        .tabla-totales td {
+            padding: 6px 10px;
+            border: 1px solid #212842;
+        }
+
+        .tabla-totales .label-total {
+            font-weight: bold;
+            text-transform: uppercase;
+            background: white;
+        }
+
+        .tabla-totales .valor-total {
+            text-align: right;
+            font-weight: bold;
+        }
+
+        .tabla-totales .fila-final {
+            background: #212842;
+            color: #F0E7D5;
+            font-size: 11pt;
+            font-weight: bold;
+        }
+
+        /* Información adicional */
+        .info-adicional {
+            margin: 12px 0;
+            border: 1px solid #212842;
+            background: white;
+        }
+
+        /* Footer */
+        .footer-info {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #212842;
+            font-size: 7pt;
+            text-align: center;
+            color: #212842;
+        }
+
+        .footer-info div {
+            margin-bottom: 3px;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .ride-container {
+                border: 1px solid #212842;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="ride-container">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-emisor">
+                <div class="razon-social">{{ empresa.razon_social }}</div>
+                <div class="nombre-comercial">{{ empresa.nombre_comercial }}</div>
+
+                <div class="datos-emisor">
+                    <div><span class="label-bold">Dir. Matriz:</span> {{ empresa.direccion_matriz }}</div>
+                    <div>{{ empresa.ciudad }}, {{ empresa.provincia }} - {{ empresa.pais }}</div>
+                    {% if empresa.direccion_sucursal %}
+                    <div><span class="label-bold">Dir. Sucursal:</span> {{ empresa.direccion_sucursal }}</div>
+                    {% endif %}
+                    {% if empresa.contribuyente_especial %}
+                    <div><span class="label-bold">Contribuyente Especial Nro:</span> {{ empresa.contribuyente_especial }}</div>
+                    {% endif %}
+                    {% if empresa.obligado_contabilidad %}
+                    <div><span class="label-bold">OBLIGADO A LLEVAR CONTABILIDAD:</span> SÍ</div>
+                    {% else %}
+                    <div><span class="label-bold">OBLIGADO A LLEVAR CONTABILIDAD:</span> NO</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="header-factura">
+                <div class="box-factura">
+                    <div class="titulo-factura">FACTURA</div>
+                    <div class="numero-factura">No. {{ venta.numero_factura }}</div>
+
+                    <div class="info-factura">
+                        {% if venta.numero_autorizacion %}
+                        <div><span class="label-bold">NÚMERO DE AUTORIZACIÓN</span></div>
+                        <div style="word-break: break-all; margin: 5px 0;">{{ venta.numero_autorizacion }}</div>
+                        <div><span class="label-bold">FECHA Y HORA DE AUTORIZACIÓN:</span></div>
+                        <div>{{ venta.fecha_autorizacion|date:"d/m/Y H:i:s" }}</div>
+                        {% endif %}
+                        <div style="margin-top: 6px;">
+                            <span class="label-bold">AMBIENTE:</span>
+                            {% if empresa.ambiente_sri == '1' %}PRUEBAS{% else %}PRODUCCIÓN{% endif %}
+                        </div>
+                        <div><span class="label-bold">EMISIÓN:</span> NORMAL</div>
+                        {% if venta.clave_acceso %}
+                        <div><span class="label-bold">CLAVE DE ACCESO</span></div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid de 2 columnas: Comprador e Información Adicional -->
+        <div class="grid-dos-columnas">
+            <!-- INFORMACIÓN DEL COMPRADOR -->
+            <div class="columna">
+                <div class="seccion-comprador">
+                    <div class="titulo-seccion">Identificación del Comprador</div>
+                    <div class="contenido-seccion">
+                        <div class="dato-tabla">
+                            <div class="dato-label">Razón Social / Nombres y Apellidos:</div>
+                            <div class="dato-valor">
+                                {{ venta.cliente.razon_social|default:venta.cliente.persona.full_name }}
+                            </div>
+                        </div>
+                        <div class="dato-tabla">
+                            <div class="dato-label">Identificación:</div>
+                            <div class="dato-valor">{{ venta.cliente.identificacion }}</div>
+                        </div>
+                        <div class="dato-tabla">
+                            <div class="dato-label">Fecha de Emisión:</div>
+                            <div class="dato-valor">{{ venta.fecha_factura|date:"d/m/Y H:i" }}</div>
+                        </div>
+                        {% if venta.cliente.persona.direccion %}
+                        <div class="dato-tabla">
+                            <div class="dato-label">Dirección:</div>
+                            <div class="dato-valor">
+                                {{ venta.cliente.persona.direccion.name }},
+                                {{ venta.cliente.persona.direccion.region }} -
+                                {{ venta.cliente.persona.direccion.country }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if venta.cliente.telefono_facturacion %}
+                        <div class="dato-tabla">
+                            <div class="dato-label">Teléfono:</div>
+                            <div class="dato-valor">{{ venta.cliente.telefono_facturacion }}</div>
+                        </div>
+                        {% endif %}
+                        <div class="dato-tabla">
+                            <div class="dato-label">Email:</div>
+                            <div class="dato-valor">
+                                {{ venta.cliente.email_facturacion|default:venta.cliente.persona.email }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INFORMACIÓN ADICIONAL -->
+            <div class="columna">
+                <div class="info-adicional">
+                    <div class="titulo-seccion">Información Adicional</div>
+                    <div class="contenido-seccion">
+                        {% if venta.observaciones %}
+                        <div class="dato-tabla">
+                            <div class="dato-label">Observaciones:</div>
+                            <div class="dato-valor">{{ venta.observaciones }}</div>
+                        </div>
+                        {% endif %}
+                        <div class="dato-tabla">
+                            <div class="dato-label">Forma de Pago:</div>
+                            <div class="dato-valor">
+                                {{ venta.forma_pago|default:"Contado - Efectivo / Transferencia" }}
+                            </div>
+                        </div>
+                        <div class="dato-tabla">
+                            <div class="dato-label">Email:</div>
+                            <div class="dato-valor">{{ empresa.email }}</div>
+                        </div>
+                        <div class="dato-tabla">
+                            <div class="dato-label">Teléfono:</div>
+                            <div class="dato-valor">
+                                {{ empresa.telefono }}{% if empresa.celular %} / {{ empresa.celular }}{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABLA DE PRODUCTOS/SERVICIOS -->
+        <table class="tabla-items">
+            <thead>
+                <tr>
+                    <th style="width: 12%;">Cod. Principal</th>
+                    <th style="width: 10%;">Cod. Auxiliar</th>
+                    <th style="width: 8%;" class="center">Cant.</th>
+                    <th style="width: 30%;">Descripción</th>
+                    <th style="width: 12%;" class="right">Precio Unitario</th>
+                    <th style="width: 10%;" class="right">Descuento</th>
+                    <th style="width: 12%;" class="right">Precio Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle in venta.detalles.all %}
+                <tr>
+                    <td>{{ detalle.producto.codigo }}</td>
+                    <td>{{ detalle.producto.codigo_auxiliar|default:"-" }}</td>
+                    <td class="center">{{ detalle.cantidad|floatformat:2 }}</td>
+                    <td>{{ detalle.producto.nombre }}</td>
+                    <td class="right">${{ detalle.precio_unitario|floatformat:2 }}</td>
+                    <td class="right">${{ detalle.descuento|floatformat:2 }}</td>
+                    <td class="right">${{ detalle.total|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- TOTALES Y CÓDIGO DE BARRAS -->
+        <div class="grid-dos-columnas">
+            <!-- CÓDIGO DE BARRAS Y CLAVE DE ACCESO -->
+            <div class="columna">
+                {% if venta.clave_acceso %}
+                <div class="clave-acceso-section">
+                    <div class="barcode-simulation">
+                        <div class="barcode-bars">
+                            <!-- Simulación visual de código de barras CODE 128 -->
+                            <div class="bar thick"></div>
+                            <div class="bar space"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar thick"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar thick"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar"></div>
+                            <div class="bar thick"></div>
+                            <div class="bar space"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar thick"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar thick"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar thick"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar"></div>
+                            <div class="bar thick"></div>
+                            <div class="bar space"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar thick"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar thick"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar space"></div>
+                            <div class="bar thick"></div>
+                        </div>
+                    </div>
+                    <div class="clave-numeros">{{ venta.clave_acceso }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- TOTALES -->
+            <div class="columna">
+                <table class="tabla-totales">
+                    <tr>
+                        <td class="label-total">SUBTOTAL 15%</td>
+                        <td class="valor-total">${{ venta.subtotal_iva_15|default:venta.subtotal|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-total">SUBTOTAL 0%</td>
+                        <td class="valor-total">${{ venta.subtotal_iva_0|default:"0.00"|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-total">SUBTOTAL NO OBJETO DE IVA</td>
+                        <td class="valor-total">$0.00</td>
+                    </tr>
+                    <tr>
+                        <td class="label-total">SUBTOTAL SIN IMPUESTOS</td>
+                        <td class="valor-total">${{ venta.subtotal|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-total">SUBTOTAL EXENTO DE IVA</td>
+                        <td class="valor-total">$0.00</td>
+                    </tr>
+                    {% if venta.descuento > 0 %}
+                    <tr>
+                        <td class="label-total">TOTAL DESCUENTO</td>
+                        <td class="valor-total">${{ venta.descuento|floatformat:2 }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td class="label-total">TOTAL DESCUENTO</td>
+                        <td class="valor-total">$0.00</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td class="label-total">IVA 15%</td>
+                        <td class="valor-total">${{ venta.iva_valor|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-total">PROPINA</td>
+                        <td class="valor-total">${{ venta.propina|default:"0.00"|floatformat:2 }}</td>
+                    </tr>
+                    <tr class="fila-final">
+                        <td>VALOR TOTAL</td>
+                        <td class="valor-total">${{ venta.total|floatformat:2 }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- FOOTER LEGAL -->
+        <div class="footer-info">
+            <div><strong>ORIGINAL - ADQUIRIENTE</strong></div>
+            <div style="margin-top: 8px;">Este documento es la Representación Impresa de la Factura Electrónica (RIDE)</div>
+            <div>Para verificar la autenticidad del documento ingrese a: www.sri.gob.ec/facturacion-electronica/comprobantes-electronicos</div>
+            <div style="margin-top: 8px;">{{ empresa.razon_social }} - RUC: {{ empresa.ruc }}</div>
+            <div>
+                {{ empresa.ciudad }} - {{ empresa.pais }} |
+                Tel: {{ empresa.telefono }} |
+                Email: {{ empresa.email }}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

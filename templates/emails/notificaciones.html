@@ -1,0 +1,39 @@
+{% extends "emails/base.html" %}
+
+{% block email_content %}
+<div class="hero">
+    <div class="logo-corner">{{ company_name }}</div>
+
+    <div class="content-grid">
+        <div class="box box-main">
+            <h1>{{ title }}</h1>
+            <p class="subtitle">{{ subtitle }}</p>
+        </div>
+
+        <div class="box box-icon">
+            <i class="fas fa-bell"></i>
+        </div>
+
+        <div class="box box-detail">
+            <div class="highlight">Información</div>
+            <div class="description">Nueva actualización</div>
+        </div>
+    </div>
+</div>
+
+<div class="content">
+    <p class="greeting">
+        Hola <strong>{{ employee_name }}</strong>,
+    </p>
+
+    <div class="info-box">
+        <p>{{ message }}</p>
+    </div>
+
+    {% if cta_text and cta_url %}
+    <div style="text-align: center;">
+        <a href="{{ cta_url }}" class="cta-button">{{ cta_text }}</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

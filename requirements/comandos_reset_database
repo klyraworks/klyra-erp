@@ -1,0 +1,15 @@
+# ================================================================== #
+# RESETEO COMPLETO PRESERVANDO CITIES_LIGHT
+# ================================================================== #
+
+# 1. Resetear base de datos (eliminar todas las tablas excepto cities_light)
+python manage.py setup_reset_database
+
+# 2. Aplicar migraciones
+python manage.py migrate
+
+# 3. Configuración inicial (saltando cities_light)
+python manage.py setup_inicial --skip-cities
+
+# ¡LISTO!
+# ================================================================== #

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>RIDE - Factura {{ venta.numero_factura }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            font-size: 9pt;
+            line-height: 1.3;
+            color: #000;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 21cm;
+            margin: 0 auto;
+        }
+
+        /* HEADER - Información de la empresa */
+        .header {
+            display: table;
+            width: 100%;
+            border: 2px solid #000;
+            margin-bottom: 10px;
+        }
+
+        .header-left {
+            display: table-cell;
+            width: 65%;
+            padding: 10px;
+            border-right: 2px solid #000;
+            vertical-align: top;
+        }
+
+        .header-right {
+            display: table-cell;
+            width: 35%;
+            padding: 10px;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        .logo {
+            max-width: 150px;
+            max-height: 80px;
+            margin-bottom: 10px;
+        }
+
+        .empresa-nombre {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .empresa-info {
+            font-size: 8pt;
+            line-height: 1.4;
+        }
+
+        .factura-numero {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+            padding: 5px;
+            background: #000;
+            color: #fff;
+        }
+
+        .ambiente-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            margin-top: 5px;
+            font-size: 8pt;
+            font-weight: bold;
+            border: 1px solid #000;
+        }
+
+        .ambiente-pruebas {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .ambiente-produccion {
+            background: #28a745;
+            color: #fff;
+        }
+
+        /* INFORMACIÓN TRIBUTARIA */
+        .info-tributaria {
+            border: 2px solid #000;
+            padding: 8px;
+            margin-bottom: 10px;
+            background: #f5f5f5;
+        }
+
+        .info-tributaria table {
+            width: 100%;
+        }
+
+        .info-tributaria td {
+            padding: 2px 5px;
+            font-size: 8pt;
+        }
+
+        .info-tributaria .label {
+            font-weight: bold;
+            width: 180px;
+        }
+
+        /* CLIENTE */
+        .cliente-info {
+            border: 2px solid #000;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+
+        .cliente-info table {
+            width: 100%;
+        }
+
+        .cliente-info td {
+            padding: 2px 5px;
+            font-size: 9pt;
+        }
+
+        .cliente-info .label {
+            font-weight: bold;
+            width: 180px;
+        }
+
+        /* DETALLES */
+        .detalles-titulo {
+            background: #000;
+            color: #fff;
+            padding: 5px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .tabla-detalles {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+
+        .tabla-detalles th {
+            background: #e0e0e0;
+            border: 1px solid #000;
+            padding: 5px;
+            font-size: 8pt;
+            text-align: left;
+        }
+
+        .tabla-detalles td {
+            border: 1px solid #000;
+            padding: 5px;
+            font-size: 8pt;
+        }
+
+        .tabla-detalles .numeric {
+            text-align: right;
+        }
+
+        /* TOTALES */
+        .totales {
+            float: right;
+            width: 40%;
+            margin-top: 10px;
+        }
+
+        .totales table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .totales td {
+            padding: 5px;
+            border: 1px solid #000;
+            font-size: 9pt;
+        }
+
+        .totales .label {
+            font-weight: bold;
+            text-align: right;
+            width: 60%;
+        }
+
+        .totales .value {
+            text-align: right;
+            width: 40%;
+        }
+
+        .totales .total-final {
+            background: #000;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        /* INFORMACIÓN ADICIONAL */
+        .info-adicional {
+            clear: both;
+            border: 2px solid #000;
+            padding: 8px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .info-adicional-titulo {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .info-adicional table {
+            width: 100%;
+        }
+
+        .info-adicional td {
+            padding: 2px 5px;
+            font-size: 8pt;
+        }
+
+        /* CÓDIGO DE BARRAS Y AUTORIZACIÓN */
+        .autorizacion {
+            border: 2px solid #000;
+            padding: 10px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .autorizacion-titulo {
+            font-weight: bold;
+            font-size: 10pt;
+            margin-bottom: 5px;
+        }
+
+        .clave-acceso {
+            font-size: 8pt;
+            margin: 5px 0;
+            word-break: break-all;
+        }
+
+        .codigo-barras {
+            margin: 10px 0;
+        }
+
+        .codigo-barras img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .numero-autorizacion {
+            font-size: 9pt;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .fecha-autorizacion {
+            font-size: 8pt;
+            margin-top: 3px;
+        }
+
+        /* FOOTER */
+        .footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #000;
+            text-align: center;
+            font-size: 7pt;
+            color: #666;
+        }
+
+        /* Utilidades */
+        .clearfix::after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- HEADER: EMPRESA Y NÚMERO DE FACTURA -->
+        <div class="header">
+            <div class="header-left">
+                {% if empresa.logo %}
+                <img src="{{ empresa.logo.url }}" alt="Logo" class="logo">
+                {% endif %}
+                <div class="empresa-nombre">{{ empresa.razon_social }}</div>
+                <div class="empresa-info">
+                    <strong>Nombre Comercial:</strong> {{ empresa.nombre_comercial }}<br>
+                    <strong>Dirección:</strong> {{ empresa.direccion_matriz }}<br>
+                    {% if empresa.contribuyente_especial %}
+                    <strong>Contribuyente Especial Nro:</strong> {{ empresa.contribuyente_especial }}<br>
+                    {% endif %}
+                    <strong>Obligado a llevar Contabilidad:</strong> {{ empresa.obligado_contabilidad|yesno:"SI,NO" }}
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="factura-numero">
+                    FACTURA
+                </div>
+                <div style="font-size: 11pt; font-weight: bold; margin: 5px 0;">
+                    No. {{ venta.numero_factura }}
+                </div>
+                <div style="font-size: 9pt; margin: 5px 0;">
+                    <strong>RUC:</strong> {{ empresa.ruc }}
+                </div>
+                <div class="ambiente-badge {% if ambiente == 'PRUEBAS' %}ambiente-pruebas{% else %}ambiente-produccion{% endif %}">
+                    AMBIENTE: {{ ambiente }}
+                </div>
+                <div class="ambiente-badge" style="display: block; margin-top: 5px;">
+                    EMISIÓN: {{ tipo_emision }}
+                </div>
+            </div>
+        </div>
+
+        <!-- INFORMACIÓN TRIBUTARIA -->
+        <div class="info-tributaria">
+            <table>
+                <tr>
+                    <td class="label">Fecha de Emisión:</td>
+                    <td>{{ venta.fecha_factura|date:"d/m/Y" }}</td>
+                    <td class="label">Clave de Acceso:</td>
+                    <td>{{ venta.clave_acceso }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- INFORMACIÓN DEL CLIENTE -->
+        <div class="cliente-info">
+            <table>
+                <tr>
+                    <td class="label">Razón Social / Nombres:</td>
+                    <td colspan="3">
+                        {% if cliente.razon_social %}
+                            {{ cliente.razon_social }}
+                        {% else %}
+                            {{ cliente.persona.nombres }} {{ cliente.persona.apellido1 }} {{ cliente.persona.apellido2 }}
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Identificación:</td>
+                    <td>{{ cliente.identificacion|default:cliente.ruc }}</td>
+                    <td class="label">Fecha de Emisión:</td>
+                    <td>{{ venta.fecha_factura|date:"d/m/Y H:i" }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Dirección:</td>
+                    <td>{{ cliente.direccion|default:"-" }}</td>
+                    <td class="label">Email:</td>
+                    <td>{{ cliente.email_facturacion|default:cliente.persona.email|default:"-" }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- DETALLES DE LA FACTURA -->
+        <div class="detalles-titulo">DETALLE</div>
+        <table class="tabla-detalles">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">Código</th>
+                    <th style="width: 35%;">Descripción</th>
+                    <th style="width: 10%;" class="numeric">Cantidad</th>
+                    <th style="width: 15%;" class="numeric">Precio Unit.</th>
+                    <th style="width: 10%;" class="numeric">Descuento</th>
+                    <th style="width: 10%;" class="numeric">IVA</th>
+                    <th style="width: 10%;" class="numeric">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle in detalles %}
+                <tr>
+                    <td>{{ detalle.producto.codigo|default:detalle.producto.id }}</td>
+                    <td>{{ detalle.producto.nombre }}</td>
+                    <td class="numeric">{{ detalle.cantidad }}</td>
+                    <td class="numeric">${{ detalle.precio_unitario|floatformat:2 }}</td>
+                    <td class="numeric">${{ detalle.descuento|floatformat:2 }}</td>
+                    <td class="numeric">${{ detalle.iva_valor|floatformat:2 }}</td>
+                    <td class="numeric">${{ detalle.total|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- TOTALES -->
+        <div class="totales">
+            <table>
+                <tr>
+                    <td class="label">SUBTOTAL:</td>
+                    <td class="value">${{ venta.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% if venta.descuento > 0 %}
+                <tr>
+                    <td class="label">DESCUENTO:</td>
+                    <td class="value">${{ venta.descuento|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td class="label">SUBTOTAL SIN IVA:</td>
+                    <td class="value">${{ venta.subtotal|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <td class="label">IVA 12%:</td>
+                    <td class="value">${{ venta.iva_valor|floatformat:2 }}</td>
+                </tr>
+                <tr class="total-final">
+                    <td class="label">TOTAL:</td>
+                    <td class="value">${{ venta.total|floatformat:2 }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="clearfix"></div>
+
+        <!-- INFORMACIÓN ADICIONAL -->
+        <div class="info-adicional">
+            <div class="info-adicional-titulo">INFORMACIÓN ADICIONAL</div>
+            <table>
+                {% if venta.vendedor %}
+                <tr>
+                    <td style="width: 30%; font-weight: bold;">Vendedor:</td>
+                    <td>{{ venta.vendedor }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td style="width: 30%; font-weight: bold;">Forma de Pago:</td>
+                    <td>{{ venta.get_tipo_pago_display }} - {{ venta.get_metodo_pago_display }}</td>
+                </tr>
+                {% if venta.tipo_pago == 'credito' %}
+                <tr>
+                    <td style="font-weight: bold;">Plazo de Crédito:</td>
+                    <td>{{ venta.plazo_credito_dias }} días</td>
+                </tr>
+                {% endif %}
+                {% if venta.observaciones %}
+                <tr>
+                    <td style="font-weight: bold;">Observaciones:</td>
+                    <td>{{ venta.observaciones }}</td>
+                </tr>
+                {% endif %}
+                {% if cliente.telefono_facturacion or cliente.persona.telefono %}
+                <tr>
+                    <td style="font-weight: bold;">Teléfono:</td>
+                    <td>{{ cliente.telefono_facturacion|default:cliente.persona.telefono }}</td>
+                </tr>
+                {% endif %}
+            </table>
+        </div>
+
+        <!-- AUTORIZACIÓN SRI -->
+        <div class="autorizacion">
+            {% if venta.estado_sri == 'autorizada' %}
+                <div class="autorizacion-titulo">COMPROBANTE AUTORIZADO</div>
+                <div class="numero-autorizacion">
+                    Autorización: {{ venta.numero_autorizacion }}
+                </div>
+                <div class="fecha-autorizacion">
+                    Fecha de Autorización: {{ venta.fecha_autorizacion|date:"d/m/Y H:i:s" }}
+                </div>
+            {% else %}
+                <div class="autorizacion-titulo">CLAVE DE ACCESO</div>
+            {% endif %}
+
+            <div class="clave-acceso">
+                {{ venta.clave_acceso }}
+            </div>
+
+            {% if codigo_barras %}
+            <div class="codigo-barras">
+                <img src="{{ codigo_barras }}" alt="Código de barras">
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            Este documento es una representación impresa de un comprobante electrónico autorizado por el SRI.<br>
+            Para verificar la autenticidad ingrese a: www.sri.gob.ec/facturacion-electronica
+        </div>
+
+    </div>
+</body>
+</html>

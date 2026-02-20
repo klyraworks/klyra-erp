@@ -1,0 +1,94 @@
+<!-- templates/emails/account_activated.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuenta activada</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>¡Cuenta activada!</h1>
+    </div>
+
+    <div class="content">
+        <h2>¡Felicidades {{ nombre }}!</h2>
+
+        <div class="success-box">
+            <strong>Tu cuenta ha sido activada exitosamente.</strong><br>
+            Ya puedes acceder a todos los servicios de {{ empresa }}.
+        </div>
+
+        <p>Ahora puedes iniciar sesión con tus credenciales:</p>
+
+        <div style="background-color: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 5px; margin: 15px 0;">
+            <strong>Usuario:</strong> {{ username }}<br>
+            <strong>Contraseña:</strong> La que acabas de crear
+        </div>
+
+        <div style="text-align: center;">
+            <a href="{{ login_url }}" class="button">Ir al sistema</a>
+        </div>
+
+        <h3>Próximos pasos:</h3>
+        <ul>
+            <li>Explora el sistema y familiarízate con las herramientas</li>
+            <li>Completa tu perfil con información adicional</li>
+            <li>Contacta a tu supervisor si necesitas ayuda</li>
+        </ul>
+
+        <p style="margin-top: 30px;">
+            Si tienes alguna pregunta o necesitas asistencia, no dudes en contactar al equipo de soporte.
+        </p>
+    </div>
+
+    <div class="footer">
+        <p>© {{ empresa }} | Este es un email automático, por favor no respondas.</p>
+    </div>
+</body>
+</html>

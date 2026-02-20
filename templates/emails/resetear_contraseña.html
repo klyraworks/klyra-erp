@@ -1,0 +1,49 @@
+{% extends "emails/base.html" %}
+
+{% block email_content %}
+<div class="hero">
+    <div class="logo-corner">{{ company_name }}</div>
+
+    <div class="content-grid">
+        <div class="box box-main">
+            <h1>{{ title }}</h1>
+            <p class="subtitle">{{ subtitle }}</p>
+        </div>
+
+        <div class="box box-icon">
+            <i class="fas fa-lock"></i>
+        </div>
+
+        <div class="box box-detail">
+            <div class="highlight">Seguridad</div>
+            <div class="description">Contraseña actualizada</div>
+        </div>
+    </div>
+</div>
+
+<div class="content">
+    <p class="greeting">
+        Hola <strong>{{ employee_name }}</strong>,
+    </p>
+
+    <p class="greeting">
+        Tu contraseña ha sido reseteada. Usa las siguientes credenciales temporales
+        para acceder al sistema.
+    </p>
+
+    <div class="credentials-box">
+        <div class="credential-item">
+            <div class="credential-label">Nueva Contraseña Temporal</div>
+            <div class="credential-value">{{ password }}</div>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <p>
+            <strong>Acción requerida:</strong> Inicia sesión con esta contraseña temporal
+            y cámbiala inmediatamente por una de tu elección. Si no solicitaste este cambio,
+            contacta a RRHH de inmediato.
+        </p>
+    </div>
+</div>
+{% endblock %}

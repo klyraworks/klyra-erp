@@ -1,0 +1,99 @@
+<!-- templates/emails/otp_code.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tu código de verificación</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #2196F3;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .otp-code {
+            background-color: #fff;
+            border: 3px dashed #2196F3;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        .otp-code .code {
+            font-size: 42px;
+            font-weight: bold;
+            letter-spacing: 10px;
+            color: #2196F3;
+            font-family: 'Courier New', monospace;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Código de verificación</h1>
+    </div>
+
+    <div class="content">
+        <h2>Hola {{ nombre }},</h2>
+
+        <p>Has solicitado un código de verificación para resetear tu contraseña.</p>
+
+        <div class="otp-code">
+            <p style="margin: 0; font-size: 14px; color: #666;">Tu código es:</p>
+            <div class="code">{{ otp }}</div>
+            <p style="margin: 0; font-size: 12px; color: #999;">Ingresa este código en el sistema</p>
+        </div>
+
+        <div class="warning-box">
+            <strong>⏰ Este código expirará en {{ expiry_minutes }} minutos.</strong><br>
+            El código solo se puede usar una vez.
+        </div>
+
+        <h3>Instrucciones:</h3>
+        <ol>
+            <li>Ingresa tu nombre de usuario en el sistema</li>
+            <li>Copia el código de 6 dígitos de arriba</li>
+            <li>Pégalo en el campo "Código de verificación"</li>
+            <li>Crea tu nueva contraseña</li>
+        </ol>
+
+        <p style="margin-top: 30px; color: #d32f2f;">
+            <strong>Seguridad:</strong> Nunca compartas este código con nadie. El equipo de {{ empresa }} nunca te pedirá este código por teléfono o email.
+        </p>
+
+        <p>Si no solicitaste este código, contacta inmediatamente al departamento de IT.</p>
+    </div>
+
+    <div class="footer">
+        <p>© {{ empresa }} | Este es un email automático, por favor no respondas.</p>
+    </div>
+</body>
+</html>

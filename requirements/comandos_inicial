@@ -1,0 +1,27 @@
+# ================================================================== #
+# CONFIGURACIÓN DESDE CERO - GUÍA COMPLETA
+# ================================================================== #
+
+# PASO 0: Limpiar migraciones (OPCIONAL - solo si hay problemas)
+# ================================================================== #
+python manage.py setup_clean_migrations --all --no-confirm
+
+# ================================================================== #
+# PASO 1: Crear migraciones y aplicarlas
+# ================================================================== #
+python manage.py makemigrations
+python manage.py migrate
+
+# ================================================================== #
+# PASO 2: Ejecutar configuración inicial completa
+# ================================================================== #
+python manage.py setup_inicial
+
+# ================================================================== #
+# ¡LISTO! El sistema está configurado y listo para usar
+# ================================================================== #
+
+# Credenciales de acceso:
+# Username: admin_klyra (o admin_demo si usaste --empresa-template=demo)
+# Password: admin123
+# ================================================================== #
