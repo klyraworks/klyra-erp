@@ -53,24 +53,17 @@ const menuItems: MenuGroup[] = [
         label: "Inventario",
         icon: "fa-boxes-stacked",
         subItems: [
-          { id: "stock", label: "Stock", href: "/inventario/stock", icon: "fa-clipboard-list" },
-          { id: "productos-lista", label: "Productos", href: "/inventario/productos", icon: "fa-box" },
-          { id: "categorias", label: "Categorías", href: "/inventario/categorias", icon: "fa-tags" },
-          { id: "movimientos", label: "Movimientos", href: "/inventario/movimientos", icon: "fa-tags" },
-          { id: "bodegas", label: "Bodegas", href: "/inventario/bodegas", icon: "fa-warehouse" },
-          { id: "marcas", label: "Marcas", href: "/inventario/marcas", icon: "fa-sliders" },
-        ]
-      },
-      {
-        id: "finanzas-module",
-        label: "Finanzas",
-        icon: "fa-money-bill-trend-up",
-        subItems: [
-          { id: "cuentas-cobrar", label: "Cuentas por Cobrar", href: "/finanzas/cuentas-cobrar", icon: "fa-hand-holding-dollar" },
-          { id: "cuentas-pagar", label: "Cuentas por Pagar", href: "/finanzas/cuentas-pagar", icon: "fa-credit-card" },
-          { id: "bancos", label: "Bancos y Cajas", href: "/finanzas/bancos", icon: "fa-building-columns" },
-          { id: "ingresos-egresos", label: "Ingresos y Egresos", href: "/finanzas/movimientos", icon: "fa-arrow-right-arrow-left" },
-          { id: "reportes-financieros", label: "Reportes Financieros", href: "/finanzas/reportes", icon: "fa-chart-line" },
+          { id: "stock",          label: "Stock",           href: "/inventario/stock",           icon: "fa-clipboard-list" },
+          { id: "productos",      label: "Productos",       href: "/inventario/productos",       icon: "fa-box" },
+          { id: "movimientos",    label: "Movimientos",     href: "/inventario/movimientos",     icon: "fa-arrow-right-arrow-left" },
+          { id: "transferencias", label: "Transferencias",  href: "/inventario/transferencias",  icon: "fa-truck-fast" },
+          { id: "ajustes",        label: "Ajustes",         href: "/inventario/ajustes",         icon: "fa-sliders" },
+          { id: "conteos",        label: "Conteos Físicos", href: "/inventario/conteos",         icon: "fa-magnifying-glass-chart" },
+          { id: "lotes",          label: "Lotes",           href: "/inventario/lotes",           icon: "fa-layer-group" },
+          { id: "bodegas",        label: "Bodegas",         href: "/inventario/bodegas",         icon: "fa-warehouse" },
+          { id: "categorias",     label: "Categorías",      href: "/inventario/categorias",      icon: "fa-tags" },
+          { id: "marcas",         label: "Marcas",          href: "/inventario/marcas",          icon: "fa-copyright" },
+          { id: "listas-precio",  label: "Listas de Precio",href: "/inventario/listas-precio",   icon: "fa-tag" },
         ]
       },
       {
@@ -78,11 +71,10 @@ const menuItems: MenuGroup[] = [
         label: "Ventas",
         icon: "fa-cart-shopping",
         subItems: [
-          { id: "ventas-lista", label: "Lista de Ventas", href: "/ventas", icon: "fa-list" },
-          { id: "cotizaciones", label: "Cotizaciones", href: "/ventas/cotizaciones", icon: "fa-file-invoice" },
-          { id: "clientes", label: "Clientes", href: "/ventas/clientes", icon: "fa-user-tie" },
-          { id: "reportes-ventas", label: "Reportes de Ventas", href: "/ventas/reportes", icon: "fa-chart-bar" },
-          { id: "pagos", label: "Pagos", href: "/ventas/pagos", icon: "fa-pay" },
+          { id: "ventas",       label: "Ventas",        href: "/ventas",                icon: "fa-list" },
+          { id: "cotizaciones", label: "Cotizaciones",  href: "/ventas/cotizaciones",   icon: "fa-file-invoice" },
+          { id: "clientes",     label: "Clientes",      href: "/ventas/clientes",       icon: "fa-user-tie" },
+          { id: "pagos",        label: "Pagos",         href: "/ventas/pagos",          icon: "fa-hand-holding-dollar" },
         ]
       },
       {
@@ -90,11 +82,24 @@ const menuItems: MenuGroup[] = [
         label: "Compras",
         icon: "fa-truck-ramp-box",
         subItems: [
-          { id: "compras-lista", label: "Órdenes de Compra", href: "/compras", icon: "fa-file-lines" },
-          { id: "nueva-compra", label: "Nueva Compra", href: "/compras/nueva", icon: "fa-cart-plus" },
-          { id: "proveedores", label: "Proveedores", href: "/compras/proveedores", icon: "fa-truck" },
-          { id: "solicitudes", label: "Solicitudes de Compra", href: "/compras/solicitudes", icon: "fa-clipboard-question" },
-          { id: "recepciones", label: "Recepciones", href: "/compras/recepciones", icon: "fa-box-open" },
+          { id: "ordenes-compra",   label: "Órdenes de Compra",    href: "/compras/ordenes",      icon: "fa-file-lines" },
+          { id: "recepciones",      label: "Recepciones",          href: "/compras/recepciones",  icon: "fa-box-open" },
+          { id: "solicitudes",      label: "Solicitudes de Compra",href: "/compras/solicitudes",  icon: "fa-clipboard-question" },
+          { id: "proveedores",      label: "Proveedores",          href: "/compras/proveedores",  icon: "fa-truck" },
+        ]
+      },
+      {
+        id: "finanzas-module",
+        label: "Finanzas",
+        icon: "fa-money-bill-trend-up",
+        subItems: [
+          { id: "cuentas-cobrar",    label: "Cuentas por Cobrar", href: "/finanzas/cuentas-cobrar",  icon: "fa-hand-holding-dollar" },
+          { id: "cuentas-pagar",     label: "Cuentas por Pagar",  href: "/finanzas/cuentas-pagar",   icon: "fa-credit-card" },
+          { id: "bancos",            label: "Bancos y Cajas",      href: "/finanzas/bancos",           icon: "fa-building-columns" },
+          { id: "asientos",          label: "Asientos Contables",  href: "/finanzas/asientos",         icon: "fa-book" },
+          { id: "plan-cuentas",      label: "Plan de Cuentas",     href: "/finanzas/plan-cuentas",     icon: "fa-sitemap" },
+          { id: "conciliaciones",    label: "Conciliaciones",      href: "/finanzas/conciliaciones",   icon: "fa-scale-balanced" },
+          { id: "presupuestos",      label: "Presupuestos",        href: "/finanzas/presupuestos",     icon: "fa-chart-pie" },
         ]
       },
       {
@@ -102,11 +107,32 @@ const menuItems: MenuGroup[] = [
         label: "RRHH",
         icon: "fa-users-gear",
         subItems: [
-          { id: "empleados", label: "Empleados", href: "/rrhh/empleados", icon: "fa-id-card" },
-          { id: "nomina", label: "Nómina", href: "/rrhh/nomina", icon: "fa-money-bill-wave" },
-          { id: "asistencia", label: "Asistencia", href: "/rrhh/asistencia", icon: "fa-calendar-check" },
-          { id: "vacaciones", label: "Vacaciones y Permisos", href: "/rrhh/vacaciones", icon: "fa-umbrella-beach" },
-          { id: "evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones", icon: "fa-star" },
+          { id: "empleados",   label: "Empleados",          href: "/rrhh/empleados",   icon: "fa-id-card" },
+          { id: "nomina",      label: "Nómina",             href: "/rrhh/nomina",      icon: "fa-money-bill-wave" },
+          { id: "asistencia",  label: "Asistencia",         href: "/rrhh/asistencia",  icon: "fa-calendar-check" },
+          { id: "ausencias",   label: "Vacaciones y Permisos", href: "/rrhh/ausencias", icon: "fa-umbrella-beach" },
+          { id: "evaluaciones",label: "Evaluaciones",       href: "/rrhh/evaluaciones",icon: "fa-star" },
+        ]
+      },
+      {
+        id: "facturacion-module",
+        label: "Facturación",
+        icon: "fa-file-invoice-dollar",
+        subItems: [
+          { id: "facturas", label: "Facturas Electrónicas", href: "/facturacion/facturas", icon: "fa-receipt" },
+        ]
+      },
+      {
+        id: "configuracion-module",
+        label: "Configuración",
+        icon: "fa-gear",
+        subItems: [
+          { id: "departamentos",    label: "Departamentos",      href: "/configuracion/departamentos",    icon: "fa-sitemap" },
+          { id: "puestos",          label: "Puestos",            href: "/configuracion/puestos",          icon: "fa-briefcase" },
+          { id: "roles",            label: "Roles y Permisos",   href: "/configuracion/roles",            icon: "fa-shield-halved" },
+          { id: "sucursales",       label: "Sucursales",         href: "/configuracion/sucursales",       icon: "fa-store" },
+          { id: "correo",           label: "Configuración Correo", href: "/configuracion/correo",         icon: "fa-envelope-open-text" },
+          { id: "empresa",          label: "Datos de Empresa",   href: "/configuracion/empresa",          icon: "fa-building" },
         ]
       },
     ],
@@ -271,8 +297,8 @@ export function Sidebar() {
               <span className="text-lg font-bold text-primary-foreground">K</span>
             </div>
             <div>
-              <h1 className="font-bold text-foreground">Klyra</h1>
-              <p className="text-xs text-muted-foreground">Sistema ERP</p>
+              <h1 className="font-bold text-foreground"></h1>
+              <p className="text-xs text-muted-foreground">Klyra - Sistema ERP</p>
             </div>
           </Link>
         </div>

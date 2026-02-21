@@ -10,13 +10,15 @@ import { CheckboxKlyra } from "@/components/ui/checkbox-klyra"
 import { Bodega, EmpleadoListItem, BuscarResponse } from "@/src/core/api/types"
 import { useCiudades } from "@/src/core/store"
 import { apiFetch, ApiError } from "@/src/core/api/client"
+import React from "react"
 
 interface BodegaFormProps {
     mode: 'create' | 'edit'
     bodega?: Bodega | null
+    formRef?: React.RefObject<HTMLFormElement>
 }
 
-export function BodegaForm({ mode, bodega }: BodegaFormProps) {
+export function BodegaForm({ mode, bodega, formRef }: BodegaFormProps) {
     const router = useRouter()
     const isEditMode = mode === 'edit'
 
@@ -39,8 +41,6 @@ export function BodegaForm({ mode, bodega }: BodegaFormProps) {
         is_active: true,
     })
 
-    // Cargar empleado inicial en modo edición
-    // Usa el endpoint buscar con el nombre del responsable para obtener EmpleadoListItem
     useEffect(() => {
         async function loadEmpleadoInicial() {
             if (!isEditMode || !bodega?.responsable?.id) return
@@ -178,7 +178,7 @@ export function BodegaForm({ mode, bodega }: BodegaFormProps) {
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 gap-6">
             <div className="lg:col-span-2 space-y-6">
                 {/* Información básica */}
                 <div className="bg-card rounded-xl border border-border shadow-sm p-6">
@@ -428,38 +428,7 @@ export function BodegaForm({ mode, bodega }: BodegaFormProps) {
                         </div>
                     </div>
                 )}
-
-                {/* Acciones */}
-                <div className="flex flex-col gap-3">
-                    <button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                    >
-                        {loading ? (
-                            <>
-                                <i className="fa-solid fa-spinner fa-spin"/>
-                                Guardando...
-                            </>
-                        ) : (
-                            <>
-                                <i className="fa-solid fa-save"/>
-                                {isEditMode ? 'Actualizar Bodega' : 'Crear Bodega'}
-                            </>
-                        )}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleCancel}
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-all disabled:opacity-50"
-                    >
-                        <i className="fa-solid fa-times"></i>
-                        Cancelar
-                    </button>
-                </div>
             </div>
-        </div>
+        </form>
     )
 }

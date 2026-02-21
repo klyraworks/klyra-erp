@@ -5,20 +5,22 @@ import {mutate} from "swr"
 import {Select} from "@/components/select/select-klyra"
 import {alertas} from "@/components/alerts/alertas-toast"
 import {useCategoriasArbolExpandido} from "@/src/core/store"
-import { apiFetch, ApiError } from "@/src/core/api/client"
+import {apiFetch, ApiError} from "@/src/core/api/client"
+import type React from "react"
 
 interface CategoriaFormProps {
     mode: 'create' | 'edit'
     categoria?: Categoria | null
+    formRef?: React.RefObject<HTMLFormElement>
 }
 
 interface SubcategoriaNueva {
-    id: string // ID temporal para manejo en el frontend
+    id: string
     nombre: string
     descripcion: string
 }
 
-export function CategoriaForm({mode, categoria}: CategoriaFormProps) {
+export function CategoriaForm({mode, categoria, formRef}: CategoriaFormProps) {
     const router = useRouter()
     const isEditMode = mode === 'edit'
 
@@ -155,78 +157,56 @@ export function CategoriaForm({mode, categoria}: CategoriaFormProps) {
         e.stopPropagation()
 
         if (loading) return
-
-        const esValido = validarFormulario()
-        if (!esValido) return
+        if (!validarFormulario()) return
 
         setLoading(true)
-
         try {
             const formDataToSend = new FormData()
 
-            const categoriaData = {
+            formDataToSend.append('categoria', JSON.stringify({
                 nombre: formData.nombre,
                 descripcion: formData.descripcion,
                 is_active: formData.is_active,
                 categoria_padre: formData.categoria_padre
-            }
+            }))
 
-            formDataToSend.append('categoria', JSON.stringify(categoriaData))
-
-            if (subcategoriasNuevas.length > 0) {
+            if (subcategoriasNuevas.length > 0)
                 formDataToSend.append('subcategorias_nuevas', JSON.stringify(subcategoriasNuevas))
-            }
 
-            if (subcategoriasExistentes.length > 0) {
+            if (subcategoriasExistentes.length > 0)
                 formDataToSend.append('subcategorias_existentes', JSON.stringify(subcategoriasExistentes))
-            }
 
-            if (formData.imagen) {
+            if (formData.imagen)
                 formDataToSend.append('imagen', formData.imagen)
-            }
-
-            const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
-
-            const url = isEditMode
-                ? `${API_BASE_URL}/api/categorias/${categoria?.id}/actualizar-con-subcategorias/`
-                : `${API_BASE_URL}/api/categorias/crear-con-subcategorias/`
 
             await apiFetch(
                 isEditMode
                     ? `/api/categorias/${categoria?.id}/actualizar-con-subcategorias/`
                     : `/api/categorias/crear-con-subcategorias/`,
-                {
-                    method: isEditMode ? 'PATCH' : 'POST',
-                    body: formDataToSend,
-                }
+                {method: isEditMode ? 'PATCH' : 'POST', body: formDataToSend}
             )
 
-            await mutate(['/api/categorias/'])
-
             alertas.success(
-                isEditMode
-                    ? `Categoría actualizada con subcategorías`
-                    : `Categoría creada con subcategorías`,
+                isEditMode ? 'Categoría actualizada con subcategorías' : 'Categoría creada con subcategorías',
                 isEditMode ? 'Categoría Actualizada' : 'Categoría Creada'
             )
 
-            await mutate('/api/categorias/arbol_expandido/')
+            await Promise.all([
+                mutate(['/api/categorias/']),
+                mutate('/api/categorias/arbol_expandido/')
+            ])
 
-            setTimeout(() => {
-                router.push('/inventario/categorias')
-            }, 1500)
+            setTimeout(() => router.push('/inventario/categorias'), 1500)
 
-        } catch (error: any) {
-            const mensaje = error.message || 'Error desconocido al guardar la categoría'
-            alertas.error(mensaje, isEditMode ? 'Error al Actualizar' : 'Error al Crear')
+        } catch (err) {
+            if (err instanceof ApiError) {
+                alertas.error(err.mensaje, err.titulo)
+            } else {
+                alertas.error('Error desconocido al guardar', isEditMode ? 'Error al Actualizar' : 'Error al Crear')
+            }
         } finally {
             setLoading(false)
         }
-    }
-
-    const handleCancel = () => {
-        router.push('/inventario/categorias')
     }
 
     const opcionesCategoriasPadre = () => {
@@ -281,448 +261,364 @@ export function CategoriaForm({mode, categoria}: CategoriaFormProps) {
     }
 
     return (
-        <>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Información básica */}
-                    <div className="bg-card rounded-xl border border-border shadow-sm p-6">
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
-                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                <i className="fa-solid fa-folder-tree text-muted-foreground text-lg"></i>
-                            </div>
-                            <div>
-                                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">INFORMACIÓN
-                                    BÁSICA</h2>
-                            </div>
+    <>
+        <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+                {/* Información básica */}
+                <div className="bg-card rounded-xl border border-border shadow-sm p-6">
+                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <i className="fa-solid fa-folder-tree text-muted-foreground text-lg"></i>
                         </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                                    <i className="fa-solid fa-tag mr-2 text-muted-primary"></i>
-                                    Nombre de la Categoría *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.nombre}
-                                    onChange={(e) => handleInputChange('nombre', e.target.value)}
-                                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                                    placeholder={"Ej. Categoría A"}
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                                    <i className="fa-solid fa-align-left mr-2 text-muted-primary"></i>
-                                    Descripción
-                                </label>
-                                <textarea
-                                    value={formData.descripcion}
-                                    onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                                    rows={4}
-                                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
-                                    placeholder="Descripción detallada de la categoría..."
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                                    <i className="fa-solid fa-image mr-2 text-muted-primary"></i>
-                                    Imagen de la Categoría
-                                </label>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1">
-                                        <label className="relative cursor-pointer group">
-                                            <input
-                                                type="file"
-                                                onChange={handleImageChange}
-                                                accept="image/*"
-                                                className="hidden"
-                                            />
-                                            <div
-                                                className="flex items-center justify-center gap-3 px-4 py-3 bg-background border-2 border-dashed border-border rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all">
-                                                <i className="fa-solid fa-cloud-arrow-up text-muted-foreground group-hover:text-primary transition-colors"></i>
-                                                <span
-                                                    className="text-sm text-muted-foreground group-hover:text-primary transition-colors">
-                                                {formData.imagen ? 'Cambiar imagen' : 'Seleccionar imagen'}
-                                            </span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                    {(categoria?.imagen || formData.imagen) && (
-                                        <div
-                                            className="w-16 h-16 rounded-lg border border-border overflow-hidden flex-shrink-0">
-                                            <img
-                                                src={formData.imagen ? URL.createObjectURL(formData.imagen) : categoria?.imagen || ''}
-                                                alt="Preview"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                        <div>
+                            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Información Básica</h2>
                         </div>
                     </div>
 
-                    {/* Jerarquía */}
-                    <div className="bg-card rounded-xl border border-border shadow-sm p-6">
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
-                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                <i className="fa-solid fa-sitemap text-muted-foreground text-lg"></i>
-                            </div>
-                            <div>
-                                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                    Jerarquía</h2>
-                            </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-2">
+                                <i className="fa-solid fa-tag mr-2"></i>Nombre de la Categoría *
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.nombre}
+                                onChange={(e) => handleInputChange('nombre', e.target.value)}
+                                className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                placeholder="Ej. Categoría A"
+                                required
+                            />
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-muted-foreground mb-2">
-                                <i className="fa-solid fa-folder mr-2 text-muted-foreground"></i>
-                                Categoría Padre
-                                <span className="text-xs text-muted-foreground font-normal ml-2">(Opcional)</span>
+                                <i className="fa-solid fa-align-left mr-2"></i>Descripción
                             </label>
-                            <Select
-                                options={[
-                                    {
-                                        value: '',
-                                        label: 'Sin padre (Categoría Principal)',
-                                        description: 'Nivel 1',
-                                        icon: 'fa-solid fa-folder'
-                                    },
-                                    ...opcionesCategoriasPadre()
-                                ]}
-                                value={formData.categoria_padre || ''}
-                                onChange={(value) => handleInputChange('categoria_padre', value || null)}
-                                searchable
-                                placeholder="Buscar categoría padre..."
-                                className="w-full"
+                            <textarea
+                                value={formData.descripcion}
+                                onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                                rows={4}
+                                className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                                placeholder="Descripción detallada de la categoría..."
                             />
-
-                            {formData.categoria_padre && getCategoriaPadreInfo() && (
-                                <div
-                                    className="mt-3 p-3 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-                                    <div
-                                        className="flex items-center gap-2 text-sm text-purple-800 dark:text-purple-300">
-                                        <i className="fa-solid fa-arrow-right"></i>
-                                        <span>Esta será una subcategoría de:</span>
-                                        <strong>{getCategoriaPadreInfo()?.nombre}</strong>
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
-                        <div className="mt-4 p-4 bg-muted/50 rounded-lg border border-border">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className="w-10 h-10 bg-background rounded-lg flex items-center justify-center border border-border">
-                                        <i className="fa-solid fa-layer-group text-muted-foreground"></i>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-muted-foreground">Nivel calculado</p>
-                                        <p className="text-lg font-bold text-muted-foreground">Nivel {getNivelCalculado()}</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs text-muted-foreground mb-1">Tipo</p>
-                                    <span
-                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-                                            getNivelCalculado() === 1
-                                                ? 'bg-green-100 text-green-800 dark:bg-green-950/20 dark:text-green-400'
-                                                : 'bg-purple-100 text-purple-800 dark:bg-purple-950/20 dark:text-purple-400'
-                                        }`}>
-                                        <i className={`fa-solid ${getNivelCalculado() === 1 ? 'fa-crown' : 'fa-folder'}`}></i>
-                                        {getNivelCalculado() === 1 ? 'Principal' : 'Subcategoría'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Columna lateral */}
-                <div className="space-y-6">
-
-                    {/* NUEVA SECCIÓN: Gestión de Subcategorías */}
-                    <div className="bg-card rounded-xl border border-border shadow-sm p-6">
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
-                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                <i className="fa-solid fa-folder-plus text-muted-foreground text-lg"></i>
-                            </div>
-                            <div>
-                                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                    Subcategorías</h2>
-                                <p className="text-xs text-muted-foreground">
-                                    Agregar categorías hijas
-                                    ({subcategoriasNuevas.length + subcategoriasExistentes.length} pendientes)
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Botones de acción */}
-                        <div className="grid grid-cols-1 gap-3 mb-4">
-                            <div>
-                                <Select
-                                    options={opcionesCategoriasPadre()}
-                                    value=""
-                                    onChange={agregarSubcategoriaExistente.toString}
-                                    searchable
-                                    placeholder="Enlazar existente..."
-                                    className="w-full"
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setShowModalSubcategoria(true)}
-                                className="flex-1 px-4 py-2.5 text-primary-foreground bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                            >
-                                <i className="fa-solid fa-plus mr-2"></i>
-                                Nueva Subcategoría
-                            </button>
-                        </div>
-
-                        {/* Lista de subcategorías nuevas */}
-                        {subcategoriasNuevas.length > 0 && (
-                            <div className="mb-4">
-                                <p className="text-xs font-medium text-muted-foreground mb-2">
-                                    <i className="fa-solid fa-sparkles mr-1"></i>
-                                    Nuevas ({subcategoriasNuevas.length})
-                                </p>
-                                <div className="space-y-2">
-                                    {subcategoriasNuevas.map(sub => (
-                                        <div key={sub.id}
-                                             className="flex items-center justify-between p-3 bg-muted/30 border rounded-lg">
-                                            <div className="flex-1">
-                                                <p className="text-sm font-medium text-foreground">{sub.nombre}</p>
-                                                {sub.descripcion && (
-                                                    <p className="text-xs text-muted-foreground">{sub.descripcion}</p>
-                                                )}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => eliminarSubcategoriaNueva(sub.id)}
-                                                className="ml-2 p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-950/20 rounded-lg transition-all"
-                                            >
-                                                <i className="fa-solid fa-trash text-sm"></i>
-                                            </button>
+                        <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-2">
+                                <i className="fa-solid fa-image mr-2"></i>Imagen de la Categoría
+                            </label>
+                            <div className="flex items-center gap-4">
+                                <div className="flex-1">
+                                    <label className="relative cursor-pointer group">
+                                        <input type="file" onChange={handleImageChange} accept="image/*" className="hidden"/>
+                                        <div className="flex items-center justify-center gap-3 px-4 py-3 bg-background border-2 border-dashed border-border rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all">
+                                            <i className="fa-solid fa-cloud-arrow-up text-muted-foreground group-hover:text-primary transition-colors text-sm"></i>
+                                            <span className="text-sm text-muted-foreground group-hover:text-primary transition-colors">
+                                                {formData.imagen ? 'Cambiar imagen' : 'Seleccionar imagen'}
+                                            </span>
                                         </div>
-                                    ))}
+                                    </label>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Lista de subcategorías existentes */}
-                        {subcategoriasExistentes.length > 0 && (
-                            <div>
-                                <p className="text-xs font-medium text-muted-foreground mb-2">
-                                    <i className="fa-solid fa-link mr-1"></i>
-                                    Existentes ({subcategoriasExistentes.length})
-                                </p>
-                                <div className="space-y-2">
-                                    {subcategoriasExistentes.map(id => (
-                                        <div key={id}
-                                             className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                                            <p className="text-sm font-medium text-foreground">{getNombreCategoria(id)}</p>
-                                            <button
-                                                type="button"
-                                                onClick={() => eliminarSubcategoriaExistente(id)}
-                                                className="ml-2 p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-950/20 rounded-lg transition-all"
-                                            >
-                                                <i className="fa-solid fa-unlink text-sm"></i>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {subcategoriasNuevas.length === 0 && subcategoriasExistentes.length === 0 && (
-                            <div className="text-center py-8 text-muted-foreground">
-                                <i className="fa-solid fa-folder-open text-4xl mb-3 opacity-20"></i>
-                                <p className="text-sm">No hay subcategorías agregadas</p>
-                                <p className="text-xs">Crea nuevas o enlaza existentes</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Resumen */}
-                    {isEditMode && categoria && (
-                        <div className="bg-card rounded-xl border border-border shadow-sm p-6">
-                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
-                                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                    <i className="fa-solid fa-info-circle text-muted-foreground text-lg"></i>
-                                </div>
-                                <div>
-                                    <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                        Información</h2>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center py-2 border-b border-border">
-
-                                    <span className="text-xs text-muted-foreground"><i
-                                        className="fa-solid fa-barcode text-muted-foreground mr-2"></i>Código:</span>
-                                    <span
-                                        className="text-sm font-mono font-medium text-foreground">{categoria.codigo}</span>
-                                </div>
-                                <div className="flex justify-between items-center py-2 border-b border-border">
-                                    <span className="text-xs text-muted-foreground"><i
-                                        className="fa-solid fa-angles-up text-muted-foreground mr-2"></i>Nivel actual:</span>
-                                    <span className="text-sm font-medium text-foreground">Nivel {categoria.nivel}</span>
-                                </div>
-                                {categoria?.subcategorias && categoria.subcategorias.length > 0 && (
-                                    <div className="flex justify-between items-center py-2 border-b border-border">
-                                        <span className="text-xs text-muted-foreground">Subcategorías:</span>
-                                        <span
-                                            className="text-sm font-medium text-foreground">{categoria.subcategorias.length}</span>
+                                {(categoria?.imagen || formData.imagen) && (
+                                    <div className="w-16 h-16 rounded-lg border border-border overflow-hidden flex-shrink-0">
+                                        <img
+                                            src={formData.imagen ? URL.createObjectURL(formData.imagen) : categoria?.imagen || ''}
+                                            alt="Preview"
+                                            className="w-full h-full object-cover"
+                                        />
                                     </div>
                                 )}
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* Jerarquía */}
+                <div className="bg-card rounded-xl border border-border shadow-sm p-6">
+                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <i className="fa-solid fa-sitemap text-muted-foreground text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Jerarquía</h2>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-2">
+                            <i className="fa-solid fa-folder mr-2"></i>
+                            Categoría Padre
+                            <span className="text-xs text-muted-foreground font-normal ml-2">(Opcional)</span>
+                        </label>
+                        <Select
+                            options={[
+                                { value: '', label: 'Sin padre (Categoría Principal)', description: 'Nivel 1', icon: 'fa-solid fa-folder' },
+                                ...opcionesCategoriasPadre()
+                            ]}
+                            value={formData.categoria_padre || ''}
+                            onChange={(value) => handleInputChange('categoria_padre', value || null)}
+                            searchable
+                            placeholder="Buscar categoría padre..."
+                            className="w-full"
+                        />
+
+                        {formData.categoria_padre && getCategoriaPadreInfo() && (
+                            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-300">
+                                    <i className="fa-solid fa-arrow-right text-xs"></i>
+                                    <span>Esta será una subcategoría de:</span>
+                                    <strong>{getCategoriaPadreInfo()?.nombre}</strong>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 bg-background rounded-lg flex items-center justify-center border border-border">
+                                    <i className="fa-solid fa-layer-group text-muted-foreground text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-muted-foreground">Nivel calculado</p>
+                                    <p className="text-base font-bold text-foreground">Nivel {getNivelCalculado()}</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs text-muted-foreground mb-1">Tipo</p>
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                    getNivelCalculado() === 1
+                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                        : 'bg-primary/10 text-primary'
+                                }`}>
+                                    <i className={`fa-solid ${getNivelCalculado() === 1 ? 'fa-crown' : 'fa-folder'} text-[9px]`}></i>
+                                    {getNivelCalculado() === 1 ? 'Principal' : 'Subcategoría'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Información — solo en modo edición, movida a columna principal */}
+                {isEditMode && categoria && (
+                    <div className="bg-card rounded-xl border border-border shadow-sm p-6">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
+                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <i className="fa-solid fa-circle-info text-muted-foreground text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Información</h2>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="flex justify-between items-center py-2 border-b border-border">
+                                <span className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <i className="fa-solid fa-barcode"></i>Código
+                                </span>
+                                <span className="font-mono text-xs font-semibold text-foreground bg-muted/50 px-2 py-1 rounded-md">{categoria.codigo}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-border">
+                                <span className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <i className="fa-solid fa-angles-up"></i>Nivel actual
+                                </span>
+                                <span className="text-sm font-medium text-foreground">Nivel {categoria.nivel}</span>
+                            </div>
+                            {categoria?.subcategorias && categoria.subcategorias.length > 0 && (
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-xs text-muted-foreground flex items-center gap-2">
+                                        <i className="fa-solid fa-folder-tree"></i>Subcategorías
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">
+                                        {categoria.subcategorias.length}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Columna lateral — solo Subcategorías */}
+            <div className="space-y-6">
+                <div className="bg-card rounded-xl border border-border shadow-sm p-6">
+                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <i className="fa-solid fa-folder-plus text-muted-foreground text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Subcategorías</h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {subcategoriasNuevas.length + subcategoriasExistentes.length} pendientes
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3 mb-4">
+                        <Select
+                            options={opcionesCategoriasPadre()}
+                            value=""
+                            onChange={agregarSubcategoriaExistente.toString}
+                            searchable
+                            placeholder="Enlazar existente..."
+                            className="w-full"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowModalSubcategoria(true)}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg text-sm font-medium transition-all shadow-sm"
+                        >
+                            <i className="fa-solid fa-plus text-xs"></i>
+                            Nueva Subcategoría
+                        </button>
+                    </div>
+
+                    {subcategoriasNuevas.length > 0 && (
+                        <div className="mb-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                                <i className="fa-solid fa-sparkles text-[9px]"></i>
+                                Nuevas ({subcategoriasNuevas.length})
+                            </p>
+                            <div className="space-y-2">
+                                {subcategoriasNuevas.map(sub => (
+                                    <div key={sub.id} className="flex items-center justify-between p-3 bg-muted/30 border border-border rounded-lg">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-foreground truncate">{sub.nombre}</p>
+                                            {sub.descripcion && (
+                                                <p className="text-xs text-muted-foreground truncate">{sub.descripcion}</p>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => eliminarSubcategoriaNueva(sub.id)}
+                                            className="ml-2 w-7 h-7 flex items-center justify-center text-destructive hover:bg-destructive/10 rounded-md transition-all flex-shrink-0"
+                                        >
+                                            <i className="fa-solid fa-trash text-xs"></i>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     )}
 
-                    {/* Acciones */}
-                    <div className="flex flex-col gap-3">
+                    {subcategoriasExistentes.length > 0 && (
+                        <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                                <i className="fa-solid fa-link text-[9px]"></i>
+                                Existentes ({subcategoriasExistentes.length})
+                            </p>
+                            <div className="space-y-2">
+                                {subcategoriasExistentes.map(id => (
+                                    <div key={id} className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                                        <p className="text-sm font-medium text-foreground truncate">{getNombreCategoria(id)}</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => eliminarSubcategoriaExistente(id)}
+                                            className="ml-2 w-7 h-7 flex items-center justify-center text-destructive hover:bg-destructive/10 rounded-md transition-all flex-shrink-0"
+                                        >
+                                            <i className="fa-solid fa-unlink text-xs"></i>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {subcategoriasNuevas.length === 0 && subcategoriasExistentes.length === 0 && (
+                        <div className="py-8 text-center">
+                            <i className="fa-solid fa-folder-open text-3xl text-muted-foreground/20 mb-3 block"></i>
+                            <p className="text-sm text-muted-foreground">No hay subcategorías agregadas</p>
+                            <p className="text-xs text-muted-foreground/70 mt-0.5">Crea nuevas o enlaza existentes</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </form>
+
+        {/* Modal */}
+        {showModalSubcategoria && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                <div className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-lg mx-4 animate-in fade-in zoom-in duration-200">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <i className="fa-solid fa-folder-plus text-muted-foreground text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold text-foreground">Nueva Subcategoría</h3>
+                                <p className="text-xs text-muted-foreground mt-0.5">Se creará al guardar la categoría principal</p>
+                            </div>
+                        </div>
                         <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                            type="button"
+                            onClick={() => { setShowModalSubcategoria(false); setNuevaSubcategoria({nombre: '', descripcion: ''}) }}
+                            className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded-md transition-all text-muted-foreground hover:text-foreground"
                         >
-                            {loading ? (
-                                <>
-                                    <i className="fa-solid fa-spinner fa-spin"/>
-                                    Guardando...
-                                </>
-                            ) : (
-                                <>
-                                    <i className="fa-solid fa-save"/>
-                                    {isEditMode ? 'Actualizar Categoría' : 'Crear Categoría'}
-                                </>
-                            )}
+                            <i className="fa-solid fa-times text-xs"></i>
+                        </button>
+                    </div>
+
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-2">
+                                <i className="fa-solid fa-tag mr-2"></i>Nombre de la Subcategoría *
+                            </label>
+                            <input
+                                type="text"
+                                value={nuevaSubcategoria.nombre}
+                                onChange={(e) => setNuevaSubcategoria(prev => ({...prev, nombre: e.target.value}))}
+                                className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                placeholder="Ej. Subcategoría A.1"
+                                autoFocus
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-2">
+                                <i className="fa-solid fa-align-left mr-2"></i>
+                                Descripción
+                                <span className="text-xs text-muted-foreground font-normal ml-2">(Opcional)</span>
+                            </label>
+                            <textarea
+                                value={nuevaSubcategoria.descripcion}
+                                onChange={(e) => setNuevaSubcategoria(prev => ({...prev, descripcion: e.target.value}))}
+                                rows={3}
+                                className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                                placeholder="Descripción breve de la subcategoría..."
+                            />
+                        </div>
+
+                        <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <div className="flex items-start gap-3">
+                                <i className="fa-solid fa-info-circle text-blue-600 dark:text-blue-400 mt-0.5 text-sm"></i>
+                                <div className="text-xs text-blue-800 dark:text-blue-300">
+                                    <p className="font-medium text-sm mb-1">Esta subcategoría tendrá:</p>
+                                    <p>Nivel: <strong>{getNivelCalculado() + 1}</strong></p>
+                                    <p className="mt-0.5">Padre: <strong>{formData.nombre || '(Nombre de categoría principal)'}</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 px-6 py-4 border-t border-border">
+                        <button
+                            type="button"
+                            onClick={() => { setShowModalSubcategoria(false); setNuevaSubcategoria({nombre: '', descripcion: ''}) }}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-all"
+                        >
+                            <i className="fa-solid fa-times text-xs"></i>Cancelar
                         </button>
                         <button
                             type="button"
-                            onClick={handleCancel}
-                            disabled={loading}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-all disabled:opacity-50"
+                            onClick={agregarSubcategoriaNueva}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg text-sm font-medium transition-all shadow-sm"
                         >
-                            <i className="fa-solid fa-times"></i>
-                            Cancelar
+                            <i className="fa-solid fa-plus text-xs"></i>Agregar
                         </button>
                     </div>
                 </div>
-            </form>
-
-            {/* MODAL: Agregar Nueva Subcategoría */}
-            {showModalSubcategoria && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div
-                        className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-lg mx-4 animate-in fade-in zoom-in duration-200">
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-border">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
-                                    <i className="fa-solid fa-folder-plus text-muted-foreground"></i>
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-semibold text-muted-foreground">Nueva Subcategoría</h3>
-                                    <p className="text-xs text-muted-foreground">Se creará al guardar la categoría
-                                        principal</p>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowModalSubcategoria(false)
-                                    setNuevaSubcategoria({nombre: '', descripcion: ''})
-                                }}
-                                className="p-2 hover:bg-muted rounded-lg transition-all"
-                            >
-                                <i className="fa-solid fa-times text-muted-foreground"></i>
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                                    <i className="fa-solid fa-tag mr-2"></i>
-                                    Nombre de la Subcategoría *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={nuevaSubcategoria.nombre}
-                                    onChange={(e) => setNuevaSubcategoria(prev => ({...prev, nombre: e.target.value}))}
-                                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                    placeholder={"Ej. Subcategoría A.1"}
-                                    autoFocus
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                                    <i className="fa-solid fa-align-left mr-2"></i>
-                                    Descripción
-                                    <span className="text-xs text-muted-foreground font-normal ml-2">(Opcional)</span>
-                                </label>
-                                <textarea
-                                    value={nuevaSubcategoria.descripcion}
-                                    onChange={(e) => setNuevaSubcategoria(prev => ({
-                                        ...prev,
-                                        descripcion: e.target.value
-                                    }))}
-                                    rows={3}
-                                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
-                                    placeholder="Descripción breve de la subcategoría..."
-                                />
-                            </div>
-
-                            {/* Vista previa del nivel */}
-                            <div
-                                className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                                <div className="flex items-center gap-3">
-                                    <i className="fa-solid fa-info-circle text-blue-600 dark:text-blue-400"></i>
-                                    <div className="text-sm text-blue-800 dark:text-blue-300">
-                                        <p className="font-medium">Esta subcategoría tendrá:</p>
-                                        <p className="text-xs mt-1">
-                                            • Nivel: <strong>{getNivelCalculado() + 1}</strong>
-                                            <br/>
-                                            •
-                                            Padre: <strong>{formData.nombre || '(Nombre de categoría principal)'}</strong>
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="flex gap-3 p-6 border-t border-border">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowModalSubcategoria(false)
-                                    setNuevaSubcategoria({nombre: '', descripcion: ''})
-                                }}
-                                className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-all"
-                            >
-                                <i className="fa-solid fa-times mr-2"></i>
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                onClick={agregarSubcategoriaNueva}
-                                className="flex-1 px-4 py-2.5 text-primary-foreground bg-primary hover:bg-primary/90 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                            >
-                                <i className="fa-solid fa-plus mr-2"></i>
-                                Agregar Subcategoría
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </>
-    )
+            </div>
+        )}
+    </>
+)
 }

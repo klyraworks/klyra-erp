@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useEffect, useState } from "react"
+import {useEffect, useRef, useState} from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 
@@ -16,6 +16,7 @@ import { Bodega } from "@/src/core/api/types"
 export default function EditarBodegaPage() {
     const params    = useParams()
     const bodegaId  = params.id as string
+    const formRef = useRef<HTMLFormElement>(null!)
 
     const [bodega,  setBodega]  = useState<Bodega | null>(null)
     const [loading, setLoading] = useState(true)
@@ -114,13 +115,19 @@ export default function EditarBodegaPage() {
                             <i className="fa-solid fa-arrow-left"></i>
                             <span className="hidden sm:inline">Volver</span>
                         </Link>
+                        <button
+                            onClick={() => formRef.current?.requestSubmit()}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+                        >
+                            <i className="fa-solid fa-save"></i>
+                            <span className="hidden sm:inline">Editar Marca</span>
+                        </button>
                     </div>
                 }
             />
 
             <main className="flex-1 overflow-y-auto p-6">
                 <div className="max-w-7xl mx-auto">
-
                     {/* Información contextual */}
                     <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
                         <div className="flex items-start gap-3">
@@ -148,8 +155,7 @@ export default function EditarBodegaPage() {
                             </div>
                         </div>
                     </div>
-
-                    <BodegaForm mode="edit" bodega={bodega} />
+                    <BodegaForm mode="edit" bodega={bodega} formRef={formRef} />
                 </div>
             </main>
         </>

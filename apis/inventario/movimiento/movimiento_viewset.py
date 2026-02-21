@@ -1,136 +1,97 @@
 # apis/inventario/movimiento/movimiento_viewset.py
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied, ValidationError
-from django.db.models import Q, Sum, Count, F
-from apis.core.ViewSetBase import TenantViewSet
-from django.utils import timezone
-from datetime import timedelta, date
+import logging
 
+from django.db import transaction
+from django.db.models import Q, Sum, Count
+from rest_framework import status
+from rest_framework.decorators import action
+
+from apis.core.ViewSetBase import TenantViewSet
+from apis.core.response_handler import StandardResponse
+from apps.core.decorators import requiere_permiso
 from apps.inventario.models import (
     MovimientoInventario,
     DetalleMovimiento,
     Stock,
     Producto,
-    Bodega
+    Bodega,
 )
-from apps.seguridad.models import Empleado
 from apis.inventario.movimiento.movimiento_serializer import MovimientoInventarioSerializer
-from utils.mixins.permissions import PermissionCheckMixin
-
-import logging
 
 
-class MovimientoInventarioViewSet(PermissionCheckMixin, TenantViewSet):
+class MovimientoInventarioViewSet(TenantViewSet):
     """
-    ViewSet para gestionar Movimientos de Inventario.
+    ViewSet para gestión de movimientos de inventario.
 
-    Soporta:
-    - Entradas (compras, devoluciones, ajustes positivos)
-    - Salidas (ventas, devoluciones a proveedor, ajustes negativos)
-    - Transferencias (entre bodegas)
-    - Mermas y pérdidas
+    Endpoints:
+        GET    /api/movimientos-inventario/                  - Listar
+        POST   /api/movimientos-inventario/                  - Crear
+        GET    /api/movimientos-inventario/{id}/             - Detalle
+        POST   /api/movimientos-inventario/crear-entrada/    - Atajo entrada
+        POST   /api/movimientos-inventario/crear-salida/     - Atajo salida
+        POST   /api/movimientos-inventario/crear-transferencia/ - Atajo transferencia
+        POST   /api/movimientos-inventario/{id}/anular/      - Anular movimiento
+        GET    /api/movimientos-inventario/kardex/           - Kardex de producto
+        GET    /api/movimientos-inventario/resumen/          - Resumen por período
 
     Permisos:
-    - view_movimientoinventario: Ver movimientos
-    - add_movimientoinventario: Crear movimientos
-    - autorizar_movimiento: Autorizar movimientos (Supervisor+)
-    - ver_todos_movimientos: Ver movimientos de todas las bodegas (Gerente)
+        - ver_movimiento_inventario:    GET (list, retrieve, kardex, resumen)
+        - crear_movimiento_inventario:  POST (create, crear-entrada, crear-salida, crear-transferencia)
+        - autorizar_movimiento:         POST (anular)
     """
-    queryset = MovimientoInventario.objects.select_related(
-        'bodega_origen', 'bodega_destino', 'responsable', 'autorizado_por'
-    ).prefetch_related('detalles', 'detalles__producto').all()
-    serializer_class = MovimientoInventarioSerializer
-    permission_classes = [IsAuthenticated]
-    http_method_names = ['get', 'post']  # NO permitir PUT/PATCH/DELETE
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.logger = logging.getLogger('movimiento_inventario_viewset')
+    # ==================== CONFIGURACIÓN ====================
+    logger            = logging.getLogger('apps.inventario')
+    queryset          = MovimientoInventario.objects.all()
+    serializer_class  = MovimientoInventarioSerializer
+    http_method_names = ['get', 'post']
+
+    ordering        = ['-fecha']
+    ordering_fields = ['fecha', 'numero', 'tipo']
+    search_fields   = ['numero', 'referencia', 'observaciones']
 
     # ==================== QUERYSET OPTIMIZADO ====================
 
     def get_queryset(self):
-        """
-        Filtrar movimientos por empresa y según permisos del usuario.
-        Los usuarios solo ven movimientos de sus bodegas asignadas,
-        excepto gerentes que ven todo.
-        """
-        # Aplicar filtro de tenant
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().select_related(
+            'bodega_origen', 'bodega_destino',
+            'responsable__persona', 'autorizado_por',
+            'created_by', 'updated_by',
+        ).prefetch_related(
+            'detalles__producto__unidad_medida',
+        )
 
-        # Si el usuario no puede ver todos los movimientos, filtrar por bodegas
-        if not self.request.user.has_perm('inventario.ver_todos_movimientos'):
-            try:
-                # Obtener empleado asociado al usuario
-                empleado = Empleado.objects.get(usuario=self.request.user)
-                # Obtener bodegas donde el usuario es responsable
-                bodegas_usuario = Bodega.objects.filter(
-                    Q(responsable=self.request.user)
-                ).values_list('id', flat=True)
+        # Filtros via query params
+        tipo = self.request.query_params.get('tipo')
+        if tipo:
+            queryset = queryset.filter(tipo=tipo)
 
-                queryset = queryset.filter(
-                    Q(bodega_origen_id__in=bodegas_usuario) |
-                    Q(bodega_destino_id__in=bodegas_usuario)
-                )
-            except Empleado.DoesNotExist:
-                # Usuario sin empleado asociado
-                queryset = queryset.none()
+        bodega_id = self.request.query_params.get('bodega_id')
+        if bodega_id:
+            queryset = queryset.filter(
+                Q(bodega_origen_id=bodega_id) | Q(bodega_destino_id=bodega_id)
+            )
+
+        fecha_desde = self.request.query_params.get('fecha_desde')
+        fecha_hasta = self.request.query_params.get('fecha_hasta')
+        if fecha_desde:
+            queryset = queryset.filter(fecha__gte=fecha_desde)
+        if fecha_hasta:
+            queryset = queryset.filter(fecha__lte=fecha_hasta)
+
+        producto_id = self.request.query_params.get('producto_id')
+        if producto_id:
+            queryset = queryset.filter(detalles__producto_id=producto_id).distinct()
 
         return queryset
 
     # ==================== CRUD OPERATIONS ====================
 
+    @requiere_permiso('ver_movimiento_inventario')
     def list(self, request, *args, **kwargs):
-        """
-        Listar movimientos con filtros avanzados.
-        Permiso: view_movimientoinventario
-        """
+        """Listar movimientos con filtros avanzados."""
         try:
-            self.verificar_permiso('view_movimientoinventario')
-
             queryset = self.filter_queryset(self.get_queryset())
-
-            # Filtro por tipo
-            tipo = request.query_params.get('tipo', None)
-            if tipo:
-                queryset = queryset.filter(tipo=tipo)
-
-            # Filtro por bodega
-            bodega_id = request.query_params.get('bodega_id', None)
-            if bodega_id:
-                queryset = queryset.filter(
-                    Q(bodega_origen_id=bodega_id) |
-                    Q(bodega_destino_id=bodega_id)
-                )
-
-            # Filtro por rango de fechas
-            fecha_desde = request.query_params.get('fecha_desde', None)
-            fecha_hasta = request.query_params.get('fecha_hasta', None)
-
-            if fecha_desde:
-                queryset = queryset.filter(fecha__gte=fecha_desde)
-            if fecha_hasta:
-                queryset = queryset.filter(fecha__lte=fecha_hasta)
-
-            # Filtro por producto
-            producto_id = request.query_params.get('producto_id', None)
-            if producto_id:
-                queryset = queryset.filter(detalles__producto_id=producto_id).distinct()
-
-            # Filtro por número de movimiento o referencia
-            search = request.query_params.get('search', None)
-            if search:
-                queryset = queryset.filter(
-                    Q(numero__icontains=search) |
-                    Q(referencia__icontains=search) |
-                    Q(observaciones__icontains=search)
-                )
-
-            # Ordenar por fecha descendente
-            queryset = queryset.order_by('-fecha')
 
             page = self.paginate_queryset(queryset)
             if page is not None:
@@ -138,337 +99,283 @@ class MovimientoInventarioViewSet(PermissionCheckMixin, TenantViewSet):
                 return self.get_paginated_response(serializer.data)
 
             serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data)
+            return StandardResponse.success(data=serializer.data)
 
-        except PermissionDenied as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_403_FORBIDDEN
-            )
         except Exception as e:
-            self.logger.error(f"Error listando movimientos: {str(e)}")
-            return Response(
-                {'error': 'Error al obtener movimientos'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            self.logger.error(f"Error al listar movimientos: {str(e)}", exc_info=True)
+            return StandardResponse.error(
+                mensaje="Error al obtener movimientos",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @requiere_permiso('crear_movimiento_inventario')
     def create(self, request, *args, **kwargs):
-        """
-        Crear nuevo movimiento de inventario.
-        Permiso: add_movimientoinventario
-        """
+        """Crear nuevo movimiento de inventario."""
         try:
-            self.verificar_permiso('add_movimientoinventario')
-
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            movimiento = serializer.save()
+
+            with transaction.atomic():
+                movimiento = serializer.save()
 
             self.logger.info(
-                f"Movimiento creado por {request.user.username}: {movimiento.numero}",
-                extra={
-                    'movimiento_id': movimiento.id,
-                    'numero': movimiento.numero,
-                    'tipo': movimiento.tipo,
-                    'creado_por': request.user.username
-                }
+                f"Movimiento creado | Numero={movimiento.numero} | Tipo={movimiento.tipo} | "
+                f"Usuario={request.user.id}"
             )
 
-            return Response(
-                serializer.data,
-                status=status.HTTP_201_CREATED
+            return StandardResponse.success(
+                data=MovimientoInventarioSerializer(movimiento, context={'request': request}).data,
+                mensaje="Movimiento registrado exitosamente",
+                status_code=status.HTTP_201_CREATED,
             )
 
-        except PermissionDenied as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_403_FORBIDDEN
-            )
         except Exception as e:
-            self.logger.error(f"Error creando movimiento: {str(e)}")
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
+            self.logger.error(f"Error al crear movimiento: {str(e)}", exc_info=True)
+            return StandardResponse.error(
+                mensaje="Error al crear movimiento",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @requiere_permiso('ver_movimiento_inventario')
     def retrieve(self, request, *args, **kwargs):
-        """
-        Obtener detalle completo de un movimiento.
-        Permiso: view_movimientoinventario
-        """
+        """Detalle de un movimiento."""
         try:
-            self.verificar_permiso('view_movimientoinventario')
+            instancia  = self.get_object()
+            serializer = self.get_serializer(instancia)
+            return StandardResponse.success(data=serializer.data)
 
-            instance = self.get_object()
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data)
-
-        except PermissionDenied as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        except MovimientoInventario.DoesNotExist:
-            return Response(
-                {'error': 'Movimiento no encontrado'},
-                status=status.HTTP_404_NOT_FOUND
-            )
         except Exception as e:
-            self.logger.error(f"Error obteniendo movimiento: {str(e)}")
-            return Response(
-                {'error': 'Error al obtener el movimiento'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            self.logger.error(f"Error al obtener movimiento: {str(e)}", exc_info=True)
+            return StandardResponse.error(
+                mensaje="Error al obtener el movimiento",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     # ==================== CUSTOM ACTIONS ====================
 
     @action(detail=False, methods=['post'], url_path='crear-entrada')
+    @requiere_permiso('crear_movimiento_inventario')
     def crear_entrada(self, request):
         """
         Atajo para crear entrada de inventario.
         POST /api/movimientos-inventario/crear-entrada/
-
-        Body:
-        {
-            "bodega_destino_id": 1,
-            "observaciones": "Compra a proveedor X",
-            "detalles_data": [
-                {
-                    "producto_id": 1,
-                    "cantidad": 100
-                }
-            ]
-        }
         """
         try:
-            self.verificar_permiso('add_movimientoinventario')
-
-            data = request.data.copy()
+            data         = request.data.copy()
             data['tipo'] = 'entrada'
 
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
-            movimiento = serializer.save()
 
-            return Response({
-                'message': 'Entrada de inventario registrada exitosamente',
-                'movimiento': serializer.data
-            }, status=status.HTTP_201_CREATED)
+            with transaction.atomic():
+                movimiento = serializer.save()
 
-        except PermissionDenied as e:
-            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
-        except ValidationError:
-            raise
+            self.logger.info(
+                f"Entrada creada | Numero={movimiento.numero} | Usuario={request.user.id}"
+            )
+
+            return StandardResponse.success(
+                data=MovimientoInventarioSerializer(movimiento, context={'request': request}).data,
+                mensaje="Entrada de inventario registrada exitosamente",
+                status_code=status.HTTP_201_CREATED,
+            )
+
         except Exception as e:
-            self.logger.error(f"Error creando entrada: {str(e)}")
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            self.logger.error(f"Error al crear entrada: {str(e)}", exc_info=True)
+            return StandardResponse.error(
+                mensaje="Error al registrar entrada de inventario",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     @action(detail=False, methods=['post'], url_path='crear-salida')
+    @requiere_permiso('crear_movimiento_inventario')
     def crear_salida(self, request):
         """
         Atajo para crear salida de inventario.
         POST /api/movimientos-inventario/crear-salida/
         """
         try:
-            self.verificar_permiso('add_movimientoinventario')
-
-            data = request.data.copy()
+            data         = request.data.copy()
             data['tipo'] = 'salida'
 
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
-            movimiento = serializer.save()
 
-            return Response({
-                'message': 'Salida de inventario registrada exitosamente',
-                'movimiento': serializer.data
-            }, status=status.HTTP_201_CREATED)
+            with transaction.atomic():
+                movimiento = serializer.save()
 
-        except PermissionDenied as e:
-            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
-        except ValidationError:
-            raise
+            self.logger.info(
+                f"Salida creada | Numero={movimiento.numero} | Usuario={request.user.id}"
+            )
+
+            return StandardResponse.success(
+                data=MovimientoInventarioSerializer(movimiento, context={'request': request}).data,
+                mensaje="Salida de inventario registrada exitosamente",
+                status_code=status.HTTP_201_CREATED,
+            )
+
         except Exception as e:
-            self.logger.error(f"Error creando salida: {str(e)}")
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            self.logger.error(f"Error al crear salida: {str(e)}", exc_info=True)
+            return StandardResponse.error(
+                mensaje="Error al registrar salida de inventario",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     @action(detail=False, methods=['post'], url_path='crear-transferencia')
+    @requiere_permiso('crear_movimiento_inventario')
     def crear_transferencia(self, request):
         """
         Atajo para crear transferencia entre bodegas.
         POST /api/movimientos-inventario/crear-transferencia/
         """
         try:
-            self.verificar_permiso('add_movimientoinventario')
-
-            data = request.data.copy()
+            data         = request.data.copy()
             data['tipo'] = 'transferencia'
 
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
-            movimiento = serializer.save()
-
-            return Response({
-                'message': 'Transferencia registrada exitosamente',
-                'movimiento': serializer.data
-            }, status=status.HTTP_201_CREATED)
-
-        except PermissionDenied as e:
-            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
-        except ValidationError:
-            raise
-        except Exception as e:
-            self.logger.error(f"Error creando transferencia: {str(e)}")
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=True, methods=['post'], url_path='anular')
-    def anular(self, request, pk=None):
-        """
-        Anular un movimiento y revertir cambios en inventario.
-        POST /api/movimientos-inventario/{id}/anular/
-
-        Body: {"motivo": "Razón de anulación"}
-
-        Permiso: autorizar_movimiento
-        """
-        try:
-            self.verificar_permiso(
-                'autorizar_movimiento',
-                'Solo supervisores pueden anular movimientos'
-            )
-
-            movimiento = self.get_object()
-            motivo = request.data.get('motivo', '').strip()
-
-            if not motivo:
-                return Response(
-                    {'error': 'Debe proporcionar un motivo para anular'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Crear movimiento inverso para revertir
-            from django.db import transaction
 
             with transaction.atomic():
-                # Determinar tipo inverso
-                tipo_inverso_map = {
-                    'entrada': 'salida',
-                    'salida': 'entrada',
-                    'transferencia': 'transferencia'
-                }
+                movimiento = serializer.save()
 
-                tipo_inverso = tipo_inverso_map.get(movimiento.tipo)
-                if not tipo_inverso:
-                    return Response(
-                        {'error': f'No se puede anular movimiento de tipo {movimiento.tipo}'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+            self.logger.info(
+                f"Transferencia creada | Numero={movimiento.numero} | Usuario={request.user.id}"
+            )
 
-                # Preparar datos para movimiento de anulación
-                data_anulacion = {
-                    'tipo': tipo_inverso,
-                    'referencia': f'ANULACIÓN: {movimiento.numero}',
-                    'observaciones': f'Anulación: {motivo}',
-                    'detalles_data': []
-                }
+            return StandardResponse.success(
+                data=MovimientoInventarioSerializer(movimiento, context={'request': request}).data,
+                mensaje="Transferencia registrada exitosamente",
+                status_code=status.HTTP_201_CREATED,
+            )
 
-                # Invertir bodegas si es necesario
-                if tipo_inverso == 'transferencia':
-                    data_anulacion['bodega_origen_id'] = movimiento.bodega_destino_id
-                    data_anulacion['bodega_destino_id'] = movimiento.bodega_origen_id
-                elif tipo_inverso == 'entrada':
-                    data_anulacion['bodega_destino_id'] = movimiento.bodega_origen_id
-                else:  # salida
-                    data_anulacion['bodega_origen_id'] = movimiento.bodega_destino_id
+        except Exception as e:
+            self.logger.error(f"Error al crear transferencia: {str(e)}", exc_info=True)
+            return StandardResponse.error(
+                mensaje="Error al registrar transferencia",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
-                # Copiar detalles
-                for detalle in movimiento.detalles.all():
-                    data_anulacion['detalles_data'].append({
-                        'producto_id': detalle.producto_id,
-                        'cantidad': detalle.cantidad,
-                        'costo_unitario': detalle.costo_unitario,
-                        'lote': detalle.lote,
-                        'observaciones': f'Anulación de {movimiento.numero}'
-                    })
+    @action(detail=True, methods=['post'], url_path='anular')
+    @requiere_permiso('autorizar_movimiento')
+    def anular(self, request, pk=None):
+        """
+        Anula un movimiento creando uno inverso.
+        POST /api/movimientos-inventario/{id}/anular/
+        Body: {"motivo": "Razón de anulación"}
+        """
+        try:
+            movimiento = self.get_object()
+            motivo     = request.data.get('motivo', '').strip()
 
-                # Crear movimiento de anulación
-                serializer = self.get_serializer(data=data_anulacion)
-                serializer.is_valid(raise_exception=True)
-                movimiento_anulacion = serializer.save()
-
-                self.logger.info(
-                    f"Movimiento anulado: {movimiento.numero} por {request.user.username}",
-                    extra={
-                        'movimiento_original': movimiento.id,
-                        'movimiento_anulacion': movimiento_anulacion.id,
-                        'motivo': motivo,
-                        'anulado_por': request.user.username
-                    }
+            if not motivo:
+                return StandardResponse.validation_error(
+                    {'motivo': ['El motivo de anulación es obligatorio.']}
                 )
 
-                return Response({
-                    'message': 'Movimiento anulado exitosamente',
-                    'movimiento_original': movimiento.numero,
-                    'movimiento_anulacion': movimiento_anulacion.numero
+            tipo_inverso_map = {
+                'entrada': 'salida',
+                'salida': 'entrada',
+                'transferencia': 'transferencia',
+            }
+            tipo_inverso = tipo_inverso_map.get(movimiento.tipo)
+
+            if not tipo_inverso:
+                return StandardResponse.error(
+                    mensaje=f"No se puede anular un movimiento de tipo '{movimiento.tipo}'.",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+
+            data_anulacion = {
+                'tipo':          tipo_inverso,
+                'referencia':    f'ANULACIÓN: {movimiento.numero}',
+                'observaciones': f'Anulación: {motivo}',
+                'detalles_data': [],
+            }
+
+            if tipo_inverso == 'transferencia':
+                data_anulacion['bodega_origen']  = str(movimiento.bodega_destino_id)
+                data_anulacion['bodega_destino'] = str(movimiento.bodega_origen_id)
+            elif tipo_inverso == 'salida':
+                data_anulacion['bodega_origen'] = str(movimiento.bodega_destino_id)
+            else:
+                data_anulacion['bodega_destino'] = str(movimiento.bodega_origen_id)
+
+            for detalle in movimiento.detalles.all():
+                data_anulacion['detalles_data'].append({
+                    'producto':      str(detalle.producto_id),
+                    'cantidad':      detalle.cantidad,
+                    'costo_unitario': str(detalle.costo_unitario) if detalle.costo_unitario else None,
+                    'lote':          detalle.lote,
+                    'observaciones': f'Anulación de {movimiento.numero}',
                 })
 
-        except PermissionDenied as e:
-            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
-        except ValidationError as e:
-            self.logger.error(f"[Descripción del error para el developer...]: {str(e)}")
-            raise
+            serializer = self.get_serializer(data=data_anulacion)
+            serializer.is_valid(raise_exception=True)
+
+            with transaction.atomic():
+                movimiento_anulacion = serializer.save()
+
+            self.logger.info(
+                f"Movimiento anulado | Original={movimiento.numero} | "
+                f"Anulacion={movimiento_anulacion.numero} | Usuario={request.user.id}"
+            )
+
+            return StandardResponse.success(
+                data={
+                    'movimiento_original': movimiento.numero,
+                    'movimiento_anulacion': movimiento_anulacion.numero,
+                },
+                mensaje="Movimiento anulado exitosamente",
+            )
+
         except Exception as e:
-            self.logger.error(f"Error anulando movimiento: {str(e)}")
-            return Response(
-                {'error': f'Error al anular movimiento: {str(e)}'},
-                status=status.HTTP_400_BAD_REQUEST
+            self.logger.error(f"Error al anular movimiento: {str(e)}", exc_info=True)
+            return StandardResponse.error(
+                mensaje="Error al anular el movimiento",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     @action(detail=False, methods=['get'], url_path='kardex')
+    @requiere_permiso('ver_movimiento_inventario')
     def kardex(self, request):
         """
-        Obtener kardex (historial de movimientos) de un producto en una bodega.
-        GET /api/movimientos-inventario/kardex/?producto_id=1&bodega_id=1&fecha_desde=2024-01-01
-
-        Permiso: view_movimientoinventario
+        Historial de movimientos de un producto.
+        GET /api/movimientos-inventario/kardex/?producto_id=uuid&bodega_id=uuid
         """
         try:
-            self.verificar_permiso('view_movimientoinventario')
-
             producto_id = request.query_params.get('producto_id')
-            bodega_id = request.query_params.get('bodega_id')
+            bodega_id   = request.query_params.get('bodega_id')
 
             if not producto_id:
-                return Response(
-                    {'error': 'Parámetro producto_id es requerido'},
-                    status=status.HTTP_400_BAD_REQUEST
+                return StandardResponse.validation_error(
+                    {'producto_id': ['Este parámetro es requerido.']}
                 )
 
-            # Obtener producto
             try:
-                producto = Producto.objects.get(id=producto_id)
+                producto = Producto.objects.get(
+                    id=producto_id, empresa=request.empresa, deleted_at__isnull=True
+                )
             except Producto.DoesNotExist:
-                return Response(
-                    {'error': 'Producto no encontrado'},
-                    status=status.HTTP_404_NOT_FOUND
+                return StandardResponse.error(
+                    mensaje="Producto no encontrado",
+                    status_code=status.HTTP_404_NOT_FOUND,
                 )
 
-            # Construir query
             detalles = DetalleMovimiento.objects.filter(
-                producto_id=producto_id
-            ).select_related('movimiento', 'movimiento__bodega_origen', 'movimiento__bodega_destino')
+                producto_id=producto_id,
+                empresa=request.empresa,
+            ).select_related(
+                'movimiento', 'movimiento__bodega_origen', 'movimiento__bodega_destino'
+            )
 
-            # Filtrar por bodega si se especifica
             if bodega_id:
                 detalles = detalles.filter(
                     Q(movimiento__bodega_origen_id=bodega_id) |
                     Q(movimiento__bodega_destino_id=bodega_id)
                 )
 
-            # Filtrar por fecha
             fecha_desde = request.query_params.get('fecha_desde')
             fecha_hasta = request.query_params.get('fecha_hasta')
-
             if fecha_desde:
                 detalles = detalles.filter(movimiento__fecha__gte=fecha_desde)
             if fecha_hasta:
@@ -476,110 +383,85 @@ class MovimientoInventarioViewSet(PermissionCheckMixin, TenantViewSet):
 
             detalles = detalles.order_by('movimiento__fecha')
 
-            # Construir kardex
-            kardex = []
-            for detalle in detalles:
-                mov = detalle.movimiento
-                kardex.append({
-                    'fecha': mov.fecha,
-                    'numero': mov.numero,
-                    'tipo': mov.tipo,
-                    'tipo_display': mov.get_tipo_display(),
-                    'bodega_origen': mov.bodega_origen.nombre if mov.bodega_origen else None,
+            kardex = [
+                {
+                    'fecha':          mov.fecha,
+                    'numero':         mov.numero,
+                    'tipo':           mov.tipo,
+                    'tipo_display':   mov.get_tipo_display(),
+                    'bodega_origen':  mov.bodega_origen.nombre if mov.bodega_origen else None,
                     'bodega_destino': mov.bodega_destino.nombre if mov.bodega_destino else None,
-                    'cantidad': detalle.cantidad,
-                    'stock_anterior': detalle.stock_anterior,
-                    'stock_posterior': detalle.stock_posterior,
-                    'costo_unitario': float(detalle.costo_unitario) if detalle.costo_unitario else None,
-                    'lote': detalle.lote,
-                    'referencia': mov.referencia,
-                    'observaciones': detalle.observaciones or mov.observaciones
-                })
+                    'cantidad':       d.cantidad,
+                    'stock_anterior': d.stock_anterior,
+                    'stock_posterior': d.stock_posterior,
+                    'costo_unitario': float(d.costo_unitario) if d.costo_unitario else None,
+                    'lote':           d.lote,
+                    'referencia':     mov.referencia,
+                    'observaciones':  d.observaciones or mov.observaciones,
+                }
+                for d in detalles
+                for mov in [d.movimiento]
+            ]
 
-            # Stock actual
-            stock_actual = Stock.objects.filter(
-                producto_id=producto_id
-            )
-
+            stock_qs = Stock.objects.filter(producto_id=producto_id, empresa=request.empresa)
             if bodega_id:
-                stock_actual = stock_actual.filter(bodega_id=bodega_id)
+                stock_qs = stock_qs.filter(bodega_id=bodega_id)
 
-            stock_info = stock_actual.aggregate(
-                total=Sum('cantidad'),
-                reservado=Sum('stock_reservado')
-            )
+            stock_info = stock_qs.aggregate(total=Sum('cantidad'), reservado=Sum('stock_reservado'))
+            total      = stock_info['total'] or 0
+            reservado  = stock_info['reservado'] or 0
 
-            return Response({
+            return StandardResponse.success(data={
                 'producto': {
-                    'id': producto.id,
-                    'codigo': producto.codigo,
-                    'nombre': producto.nombre,
-                    'stock_actual': stock_info['total'] or 0,
-                    'stock_reservado': stock_info['reservado'] or 0,
-                    'stock_disponible': (stock_info['total'] or 0) - (stock_info['reservado'] or 0)
+                    'id':               str(producto.id),
+                    'codigo':           producto.codigo,
+                    'nombre':           producto.nombre,
+                    'stock_actual':     total,
+                    'stock_reservado':  reservado,
+                    'stock_disponible': total - reservado,
                 },
-                'kardex': kardex,
-                'total_movimientos': len(kardex)
+                'kardex':            kardex,
+                'total_movimientos': len(kardex),
             })
 
-        except PermissionDenied as e:
-            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
-        except ValidationError:
-            raise
         except Exception as e:
-            self.logger.error(f"Error generando kardex: {str(e)}")
-            return Response(
-                {'error': 'Error al generar kardex'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            self.logger.error(f"Error al generar kardex: {str(e)}", exc_info=True)
+            return StandardResponse.error(
+                mensaje="Error al generar el kardex",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     @action(detail=False, methods=['get'], url_path='resumen')
+    @requiere_permiso('ver_movimiento_inventario')
     def resumen(self, request):
         """
-        Obtener resumen de movimientos por período.
+        Resumen de movimientos por período.
         GET /api/movimientos-inventario/resumen/?fecha_desde=2024-01-01&fecha_hasta=2024-12-31
-
-        Permiso: view_movimientoinventario
         """
         try:
-            self.verificar_permiso('view_movimientoinventario')
-
             queryset = self.get_queryset()
 
-            # Filtrar por fechas
             fecha_desde = request.query_params.get('fecha_desde')
             fecha_hasta = request.query_params.get('fecha_hasta')
-
             if fecha_desde:
                 queryset = queryset.filter(fecha__gte=fecha_desde)
             if fecha_hasta:
                 queryset = queryset.filter(fecha__lte=fecha_hasta)
 
-            # Estadísticas por tipo
             resumen_tipo = queryset.values('tipo').annotate(
                 total=Count('id'),
-                productos=Sum('detalles__cantidad')
+                productos=Sum('detalles__cantidad'),
             ).order_by('tipo')
 
-            # Total de movimientos
-            total_movimientos = queryset.count()
-
-            return Response({
-                'periodo': {
-                    'desde': fecha_desde,
-                    'hasta': fecha_hasta
-                },
-                'total_movimientos': total_movimientos,
-                'por_tipo': list(resumen_tipo)
+            return StandardResponse.success(data={
+                'periodo': {'desde': fecha_desde, 'hasta': fecha_hasta},
+                'total_movimientos': queryset.count(),
+                'por_tipo': list(resumen_tipo),
             })
 
-        except PermissionDenied as e:
-            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
-        except ValidationError:
-            raise
         except Exception as e:
-            self.logger.error(f"Error generando resumen: {str(e)}")
-            return Response(
-                {'error': 'Error al generar resumen'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            self.logger.error(f"Error al generar resumen: {str(e)}", exc_info=True)
+            return StandardResponse.error(
+                mensaje="Error al generar el resumen",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

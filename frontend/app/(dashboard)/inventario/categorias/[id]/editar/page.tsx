@@ -6,7 +6,7 @@ import {useParams} from "next/navigation"
 import {Header} from "@/src/shared/components/header"
 import {CategoriaForm} from "@/src/modules/inventario/forms/categoria-form"
 import {LoadingScreen} from "@/components/ui/loading-screen"
-import {useEffect, useState} from "react"
+import {useEffect, useRef, useState} from "react"
 import {alertas} from "@/components/alerts/alertas-toast"
 import Link from "next/link"
 import {Categoria} from "@/src/core/api/types"
@@ -18,6 +18,7 @@ export default function EditarCategoriaPage() {
     const [categoria, setCategoria] = useState<Categoria | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(false)
+    const formRef = useRef<HTMLFormElement>(null!)
 
     useEffect(() => {
         async function loadCategoria() {
@@ -108,6 +109,13 @@ export default function EditarCategoriaPage() {
                             <i className="fa-solid fa-arrow-left"></i>
                             <span className="hidden sm:inline">Volver</span>
                         </Link>
+                        <button
+                            onClick={() => formRef.current?.requestSubmit()}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+                        >
+                            <i className="fa-solid fa-save"></i>
+                            <span className="hidden sm:inline">Crear Categoría</span>
+                        </button>
                     </div>
                 }
             />
@@ -141,7 +149,7 @@ export default function EditarCategoriaPage() {
                         </div>
                     </div>
 
-                    <CategoriaForm mode="edit" categoria={categoria}/>
+                    <CategoriaForm mode="edit" categoria={categoria} formRef={formRef}/>
                 </div>
             </main>
         </>

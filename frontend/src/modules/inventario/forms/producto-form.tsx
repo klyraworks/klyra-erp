@@ -14,10 +14,12 @@ import {Select} from "@/components/select/select-klyra"
 import {alertas} from "@/components/alerts/alertas-toast"
 import {CheckboxKlyra} from "@/components/ui/checkbox-klyra"
 import {apiFetch, ApiError} from "@/src/core/api/client"
+import React from "react"
 
 interface ProductoFormProps {
     mode: 'create' | 'edit'
     producto?: Producto | null
+    formRef?: React.RefObject<HTMLFormElement>
 }
 
 const TIPOS_PRODUCTO = [
@@ -36,7 +38,7 @@ const PERECEDERO_OPTIONS = [
     {value: false, label: 'No', icon: 'fa-solid fa-infinity'},
 ]
 
-export function ProductoForm({mode, producto}: ProductoFormProps) {
+export function ProductoForm({mode, producto, formRef}: ProductoFormProps) {
     const router = useRouter()
     const isEditMode = mode === 'edit'
 
@@ -361,7 +363,7 @@ export function ProductoForm({mode, producto}: ProductoFormProps) {
     const handleCancel = () => router.push('/inventario/productos')
 
     return (
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 gap-6">
             <div className="lg:col-span-2 space-y-6">
                 {/* Información básica */}
                 <div className="bg-card rounded-xl border border-border shadow-sm p-6">
@@ -952,29 +954,6 @@ export function ProductoForm({mode, producto}: ProductoFormProps) {
                             </>
                         )}
                     </div>
-                </div>
-
-                {/* Acciones */}
-                <div className="flex flex-col gap-3">
-                    <button
-                        type="button"
-                        onClick={handleCancel}
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                    >
-                        <i className="fa-solid fa-times"></i>Cancelar
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? (
-                            <><i className="fa-solid fa-spinner fa-spin"/>Guardando...</>
-                        ) : (
-                            <><i className="fa-solid fa-save"/>Guardar Producto</>
-                        )}
-                    </button>
                 </div>
             </div>
         </form>

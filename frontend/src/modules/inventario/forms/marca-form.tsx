@@ -2,12 +2,13 @@
 
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { mutate } from "swr"
-import { alertas } from "@/components/alerts/alertas-toast"
-import { apiFetch, ApiError } from "@/src/core/api/client"
-import { Marca } from "@/src/core/api/types"
+import {useState, useEffect, useRef} from "react"
+import {useRouter} from "next/navigation"
+import {mutate} from "swr"
+import {alertas} from "@/components/alerts/alertas-toast"
+import {apiFetch, ApiError} from "@/src/core/api/client"
+import {Marca} from "@/src/core/api/types"
+import React from "react"
 
 interface PaisListItem {
     id: number
@@ -17,9 +18,10 @@ interface PaisListItem {
 interface MarcaFormProps {
     mode: 'create' | 'edit'
     marca?: Marca | null
+    formRef?: React.RefObject<HTMLFormElement>
 }
 
-export function MarcaForm({ mode, marca }: MarcaFormProps) {
+export function MarcaForm({mode, marca, formRef}: MarcaFormProps) {
     const router = useRouter()
     const isEditMode = mode === 'edit'
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -43,6 +45,7 @@ export function MarcaForm({ mode, marca }: MarcaFormProps) {
                 // silencioso — no crítico
             }
         }
+
         loadPaises()
     }, [])
 
@@ -58,7 +61,7 @@ export function MarcaForm({ mode, marca }: MarcaFormProps) {
     }, [isEditMode, marca])
 
     const handleInputChange = (field: string, value: string | number) => {
-        setFormData(prev => ({ ...prev, [field]: value }))
+        setFormData(prev => ({...prev, [field]: value}))
     }
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,12 +129,23 @@ export function MarcaForm({ mode, marca }: MarcaFormProps) {
         }
     }
 
-    const handleCancel = () => router.push('/inventario/marcas')
-
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 gap-6">
             {/* Columna principal */}
             <div className="lg:col-span-2 space-y-6">
+                {/* Alerta info */}
+                <div
+                    className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                        <i className="fa-solid fa-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
+                        <div className="text-xs text-blue-700 dark:text-blue-400">
+                            <p className="font-medium text-sm text-blue-800 dark:text-blue-300 mb-1">Sobre las
+                                marcas</p>
+                            <p>El código se genera automáticamente. No se puede eliminar una marca que tenga productos
+                                activos asociados.</p>
+                        </div>
+                    </div>
+                </div>
                 {/* Información general */}
                 <div className="bg-card rounded-xl border border-border shadow-sm p-6">
                     <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
@@ -213,9 +227,10 @@ export function MarcaForm({ mode, marca }: MarcaFormProps) {
                     <div className="flex items-start gap-6">
                         {/* Preview */}
                         <div className="flex-shrink-0">
-                            <div className="w-24 h-24 bg-muted/30 border border-border rounded-xl flex items-center justify-center overflow-hidden">
+                            <div
+                                className="w-24 h-24 bg-muted/30 border border-border rounded-xl flex items-center justify-center overflow-hidden">
                                 {logoPreview ? (
-                                    <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-2" />
+                                    <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-2"/>
                                 ) : (
                                     <i className="fa-solid fa-image text-3xl text-muted-foreground/40"></i>
                                 )}
@@ -256,99 +271,63 @@ export function MarcaForm({ mode, marca }: MarcaFormProps) {
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Columna lateral */}
-            <div className="space-y-6">
-                {/* Acciones */}
-                <div className="bg-card rounded-xl border border-border shadow-sm p-6">
-                    <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <i className="fa-solid fa-bolt text-muted-foreground text-lg"></i>
-                        </div>
-                        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                            Acciones
-                        </h2>
-                    </div>
-                    <div className="flex flex-col gap-3">
-                        <button
-                            type="button"
-                            onClick={handleSubmit}
-                            disabled={loading}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                        >
-                            {loading ? (
-                                <><i className="fa-solid fa-spinner fa-spin" />Guardando...</>
-                            ) : (
-                                <><i className="fa-solid fa-save" />{isEditMode ? 'Actualizar Marca' : 'Crear Marca'}</>
-                            )}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleCancel}
-                            disabled={loading}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-all disabled:opacity-50"
-                        >
-                            <i className="fa-solid fa-times"></i>Cancelar
-                        </button>
-                    </div>
-                </div>
 
-                {/* Info modo edición */}
                 {isEditMode && marca && (
                     <div className="bg-card rounded-xl border border-border shadow-sm p-6">
                         <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border">
                             <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                                 <i className="fa-solid fa-circle-info text-muted-foreground text-lg"></i>
                             </div>
-                            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                                Detalles
-                            </h2>
+                            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Detalles</h2>
                         </div>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Código</span>
-                                <span className="text-xs font-mono font-medium text-foreground bg-muted px-2 py-0.5 rounded">{marca.codigo}</span>
+                        <div className="space-y-1">
+                            <div className="flex items-center justify-between py-2 border-b border-border">
+                                <span className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <i className="fa-solid fa-barcode"></i>Código
+                                </span>
+                                <span
+                                    className="font-mono text-xs font-semibold text-foreground bg-muted/50 px-2 py-1 rounded-md">{marca.codigo}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Estado</span>
+                            <div className="flex items-center justify-between py-2 border-b border-border">
+                                <span className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <i className="fa-solid fa-circle-dot"></i>Estado
+                                </span>
                                 {marca.is_active ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-600">
-                                        <i className="fa-solid fa-circle-check text-[10px]"></i>Activa
+                                    <span
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                        <i className="fa-solid fa-circle-check text-[9px]"></i>Activa
                                     </span>
                                 ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600">
-                                        <i className="fa-solid fa-ban text-[10px]"></i>Inactiva
+                                    <span
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-destructive/10 text-destructive">
+                                        <i className="fa-solid fa-ban text-[9px]"></i>Inactiva
                                     </span>
                                 )}
                             </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Productos</span>
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                    <i className="fa-solid fa-box text-[10px]"></i>{marca.total_productos}
+                            <div
+                                className={`flex items-center justify-between py-2 ${marca.pais_origen_nombre ? 'border-b border-border' : ''}`}>
+                                <span className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <i className="fa-solid fa-box"></i>Productos
+                                </span>
+                                <span
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">
+                                    {marca.total_productos}
                                 </span>
                             </div>
                             {marca.pais_origen_nombre && (
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-muted-foreground">País</span>
-                                    <span className="text-xs font-medium text-foreground">{marca.pais_origen_nombre}</span>
+                                <div className="flex items-center justify-between py-2">
+                                    <span className="text-xs text-muted-foreground flex items-center gap-2">
+                                        <i className="fa-solid fa-earth-americas"></i>País
+                                    </span>
+                                    <span
+                                        className="text-xs font-medium text-foreground">{marca.pais_origen_nombre}</span>
                                 </div>
                             )}
                         </div>
                     </div>
                 )}
-
-                {/* Alerta info */}
-                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                        <i className="fa-solid fa-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
-                        <div className="text-xs text-blue-700 dark:text-blue-400">
-                            <p className="font-medium text-sm text-blue-800 dark:text-blue-300 mb-1">Sobre las marcas</p>
-                            <p>El código se genera automáticamente. No se puede eliminar una marca que tenga productos activos asociados.</p>
-                        </div>
-                    </div>
-                </div>
             </div>
-        </div>
+        </form>
     )
 }

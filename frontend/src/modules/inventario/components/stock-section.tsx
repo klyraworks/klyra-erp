@@ -246,241 +246,213 @@ export function StockSection({compact = false}: StockSectionProps) {
     const displayInventario = compact ? inventario_critico?.slice(0, 5) : paginatedData
 
     if (error) {
-        return (
-            <div className="bg-card rounded-xl border border-border p-6">
-                <div className="text-center text-destructive">
-                    <i className="fa-solid fa-circle-exclamation text-2xl mb-2"></i>
-                    <p>Error al cargar el stock</p>
-                </div>
+    return (
+        <div className="bg-card rounded-xl border border-border shadow-sm p-8 text-center">
+            <div className="w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i className="fa-solid fa-circle-exclamation text-xl text-destructive"></i>
             </div>
-        )
-    }
+            <p className="text-sm font-medium text-foreground">Error al cargar el stock</p>
+            <p className="text-xs text-muted-foreground mt-1">Intenta recargar la página</p>
+        </div>
+    )
+}
 
     return (
-        <>
-            <div className="bg-card rounded-xl border border-border shadow-sm">
-                <div className="flex items-center justify-between p-6 border-b border-border">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-                            <i className="fa-solid fa-warehouse text-primary text-lg"></i>
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-foreground">
-                                {compact ? "Stock Crítico por Bodega" : "Stock"}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                                {compact
-                                    ? "Productos que necesitan reposición"
-                                    : `${inventario?.length || 0} registros de inventario`}
-                            </p>
-                        </div>
+    <>
+        <div className="bg-card rounded-xl border border-border shadow-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <i className="fa-solid fa-warehouse text-primary text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold text-foreground">
+                            {compact ? "Stock Crítico por Bodega" : "Stock"}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            {compact
+                                ? "Productos que necesitan reposición"
+                                : `${inventario?.length || 0} registros de inventario`}
+                        </p>
                     </div>
                 </div>
+            </div>
 
-                <div className="p-6">
-                    {isLoading ? (
-                        <div className="space-y-3">
-                            {[1, 2, 3].map((i) => (
-                                <div key={i} className="h-16 bg-muted/50 animate-pulse rounded-lg"></div>
-                            ))}
+            <div className="p-0">
+                {isLoading ? (
+                    <div className="p-6 space-y-3">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="h-12 bg-muted/40 animate-pulse rounded-lg"></div>
+                        ))}
+                    </div>
+                ) : inventario?.length === 0 ? (
+                    <div className="py-16 text-center">
+                        <div className="w-14 h-14 bg-muted/60 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i className="fa-solid fa-inbox text-2xl text-muted-foreground/50"></i>
                         </div>
-                    ) : inventario?.length === 0 ? (
-                        <div className="text-center py-12">
-                            <div
-                                className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i className="fa-solid fa-inbox text-3xl text-muted-foreground"></i>
-                            </div>
-                            <p className="text-muted-foreground font-medium">No hay inventario registrado</p>
-                            <p className="text-sm text-muted-foreground mt-1">Los productos aparecerán aquí cuando
-                                realices movimientos de inventario</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto -mx-6">
-                            <table className="w-full">
+                        <p className="text-sm font-medium text-muted-foreground">No hay inventario registrado</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Los productos aparecerán aquí cuando realices movimientos de inventario</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
                                 <thead>
-                                <tr className="border-b border-border">
-                                    <th className="text-left py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Código
-                                    </th>
-                                    <th className="text-left py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Producto
-                                    </th>
-                                    <th className="text-center py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Bodega
-                                    </th>
-                                    <th className="text-center py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Stock
-                                    </th>
-                                    {!compact && (
-                                        <th className="text-center py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                            Reservado
-                                        </th>
-                                    )}
-                                    {!compact && (
-                                        <th className="text-center py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                            Acciones
-                                        </th>
-                                    )}
-                                </tr>
+                                    <tr className="bg-muted/30 border-b border-border">
+                                        <th className="text-left py-2.5 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Código</th>
+                                        <th className="text-left py-2.5 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Producto</th>
+                                        <th className="text-left py-2.5 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bodega</th>
+                                        <th className="text-center py-2.5 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stock</th>
+                                        {!compact && (
+                                            <th className="text-center py-2.5 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Reservado</th>
+                                        )}
+                                        {!compact && (
+                                            <th className="py-2.5 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-16">
+                                                <i className="fa-solid fa-ellipsis"></i>
+                                            </th>
+                                        )}
+                                    </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border">
-                                {displayInventario?.map((item) => {
-                                    const status = getStockStatus(item.estado_stock)
-                                    return (
-                                        <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                                            <td className="py-4 px-6">
-                                                <div className="flex items-center gap-2">
-                                                    <div
-                                                        className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                                                        <i className="fa-solid fa-barcode text-xs text-primary"></i>
-                                                    </div>
-                                                    <span className="text-sm font-mono font-medium text-foreground">
+                                <tbody className="divide-y divide-border/60">
+                                    {displayInventario?.map((item) => {
+                                        const status = getStockStatus(item.estado_stock)
+                                        return (
+                                            <tr key={item.id} className="hover:bg-muted/20 transition-colors group">
+                                                {/* Código */}
+                                                <td className="py-3.5 px-6">
+                                                    <span className="font-mono text-xs font-semibold text-foreground bg-muted/50 px-2 py-1 rounded-md">
                                                         {item.producto_codigo}
                                                     </span>
-                                                </div>
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-medium text-foreground">
-                                                        {item.producto_nombre}
-                                                    </span>
-                                                    {item.categoria_nombre && (
-                                                        <span
-                                                            className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                                                            {item.categoria_nombre}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <span className="text-sm font-medium text-foreground">
-                                                        {item.bodega_nombre}
-                                                    </span>
-                                                    <span className="text-xs font-mono text-muted-foreground">
-                                                        {item.bodega_codigo}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <span
-                                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${status.bg} ${status.color}`}>
-                                                        {status.label}
-                                                    </span>
-                                                    <span className="text-sm font-semibold text-foreground">
-                                                        {item.cantidad} {item.unidad_medida}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            {!compact && (
-                                                <td className="py-4 px-6 text-center">
-                                                    {item.stock_reservado > 0 ? (
-                                                        <span
-                                                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-600 dark:text-orange-400">
-                                                            <i className="fa-solid fa-lock text-[10px] mr-1"></i>
-                                                            {item.stock_reservado}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground">—</span>
-                                                    )}
                                                 </td>
-                                            )}
-                                            {!compact && (
-                                                <td className="py-4 px-6">
-                                                    <div className="flex items-center justify-center">
+
+                                                {/* Producto + categoría */}
+                                                <td className="py-3.5 px-6">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium text-foreground leading-snug">
+                                                            {item.producto_nombre}
+                                                        </span>
+                                                        {item.categoria_nombre && (
+                                                            <span className="text-xs text-muted-foreground mt-0.5">
+                                                                {item.categoria_nombre}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Bodega + código bodega */}
+                                                <td className="py-3.5 px-6">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium text-foreground leading-snug">
+                                                            {item.bodega_nombre}
+                                                        </span>
+                                                        <span className="text-xs font-mono text-muted-foreground mt-0.5">
+                                                            {item.bodega_codigo}
+                                                        </span>
+                                                    </div>
+                                                </td>
+
+                                                {/* Stock + estado */}
+                                                <td className="py-3.5 px-6">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${status.bg} ${status.color}`}>
+                                                            <i className={`fa-solid ${status.icon} text-[9px]`}></i>
+                                                            {status.label}
+                                                        </span>
+                                                        <span className="text-xs font-semibold text-foreground tabular-nums">
+                                                            {item.cantidad} {item.unidad_medida}
+                                                        </span>
+                                                    </div>
+                                                </td>
+
+                                                {/* Reservado */}
+                                                {!compact && (
+                                                    <td className="py-3.5 px-6 text-center">
+                                                        {item.stock_reservado > 0 ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                                                                <i className="fa-solid fa-lock text-[9px]"></i>
+                                                                {item.stock_reservado}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-muted-foreground">—</span>
+                                                        )}
+                                                    </td>
+                                                )}
+
+                                                {/* Acciones */}
+                                                {!compact && (
+                                                    <td className="py-3.5 px-6 text-center">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
-                                                                <button
-                                                                    className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
-                                                                    <i className="fa-solid fa-ellipsis-vertical text-sm"></i>
+                                                                <button className="w-7 h-7 inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors opacity-50 group-hover:opacity-100">
+                                                                    <i className="fa-solid fa-ellipsis-vertical text-xs"></i>
                                                                 </button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end" className="w-48">
-                                                                <DropdownMenuItem onClick={() => {
-                                                                    router.push(`/inventario/productos/${item.producto_id}`)
-                                                                }}>
-                                                                    <i className="fa-solid fa-eye mr-2 text-sm"></i>
+                                                                <DropdownMenuItem onClick={() => router.push(`/inventario/productos/${item.producto_id}`)}>
+                                                                    <i className="fa-solid fa-eye mr-2 text-xs text-muted-foreground"></i>
                                                                     Ver detalles producto
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => {
-                                                                    router.push(`/inventario/kardex?producto_id=${item.producto_id}&bodega_id=${item.bodega_id}`)
-                                                                }}>
-                                                                    <i className="fa-solid fa-clock-rotate-left mr-2 text-sm"></i>
+                                                                <DropdownMenuItem onClick={() => router.push(`/inventario/kardex?producto_id=${item.producto_id}&bodega_id=${item.bodega_id}`)}>
+                                                                    <i className="fa-solid fa-clock-rotate-left mr-2 text-xs text-muted-foreground"></i>
                                                                     Ver kardex
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuSeparator/>
-                                                                <DropdownMenuItem onClick={() => {
-                                                                    router.push(`/inventario/movimientos/nuevo?tipo=entrada&bodega_id=${item.bodega_id}&producto_id=${item.producto_id}`)
-                                                                }}>
-                                                                    <i className="fa-solid fa-arrow-right-to-bracket mr-2 text-sm"></i>
+                                                                <DropdownMenuItem onClick={() => router.push(`/inventario/movimientos/nuevo?tipo=entrada&bodega_id=${item.bodega_id}&producto_id=${item.producto_id}`)}>
+                                                                    <i className="fa-solid fa-arrow-right-to-bracket mr-2 text-xs text-muted-foreground"></i>
                                                                     Registrar entrada
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => {
-                                                                    router.push(`/inventario/movimientos/nuevo?tipo=salida&bodega_id=${item.bodega_id}&producto_id=${item.producto_id}`)
-                                                                }}>
-                                                                    <i className="fa-solid fa-arrow-right-from-bracket mr-2 text-sm"></i>
+                                                                <DropdownMenuItem onClick={() => router.push(`/inventario/movimientos/nuevo?tipo=salida&bodega_id=${item.bodega_id}&producto_id=${item.producto_id}`)}>
+                                                                    <i className="fa-solid fa-arrow-right-from-bracket mr-2 text-xs text-muted-foreground"></i>
                                                                     Registrar salida
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => {
-                                                                    router.push(`/inventario/movimientos/nuevo?tipo=transferencia&bodega_origen_id=${item.bodega_id}&producto_id=${item.producto_id}`)
-                                                                }}>
-                                                                    <i className="fa-solid fa-truck-ramp-box mr-2 text-sm"></i>
+                                                                <DropdownMenuItem onClick={() => router.push(`/inventario/movimientos/nuevo?tipo=transferencia&bodega_origen_id=${item.bodega_id}&producto_id=${item.producto_id}`)}>
+                                                                    <i className="fa-solid fa-truck-ramp-box mr-2 text-xs text-muted-foreground"></i>
                                                                     Transferir a bodega
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuSeparator/>
-                                                                <DropdownMenuItem onClick={() => {
-                                                                    setSelectedInventario(item)
-                                                                    setModalAjustarStock(true)
-                                                                }}>
-                                                                    <i className="fa-solid fa-sliders mr-2 text-sm"></i>
+                                                                <DropdownMenuItem onClick={() => { setSelectedInventario(item); setModalAjustarStock(true) }}>
+                                                                    <i className="fa-solid fa-sliders mr-2 text-xs text-muted-foreground"></i>
                                                                     Ajustar stock
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => {
-                                                                    setSelectedInventario(item)
-                                                                    setModalCambiarUbicacion(true)
-                                                                }}>
-                                                                    <i className="fa-solid fa-location-dot mr-2 text-sm"></i>
+                                                                <DropdownMenuItem onClick={() => { setSelectedInventario(item); setModalCambiarUbicacion(true) }}>
+                                                                    <i className="fa-solid fa-location-dot mr-2 text-xs text-muted-foreground"></i>
                                                                     Cambiar ubicación
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => {
-                                                                    setSelectedInventario(item)
-                                                                    setModalReservarStock(true)
-                                                                }}>
-                                                                    <i className="fa-solid fa-lock mr-2 text-sm"></i>
+                                                                <DropdownMenuItem onClick={() => { setSelectedInventario(item); setModalReservarStock(true) }}>
+                                                                    <i className="fa-solid fa-lock mr-2 text-xs text-muted-foreground"></i>
                                                                     Reservar stock
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
-                                                    </div>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    )
-                                })}
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         </div>
-                    )}
 
-                    {!compact && inventario && inventario.length > 0 && (
-                        <div className="mt-6">
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={goToPage}
-                                onNext={nextPage}
-                                onPrev={prevPage}
-                                hasNextPage={hasNextPage}
-                                hasPrevPage={hasPrevPage}
-                                startIndex={startIndex}
-                                endIndex={endIndex}
-                                totalItems={totalItems}
-                            />
-                        </div>
-                    )}
-                </div>
+                        {!compact && inventario && inventario.length > 0 && (
+                            <div className="px-6 py-4 border-t border-border">
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    onPageChange={goToPage}
+                                    onNext={nextPage}
+                                    onPrev={prevPage}
+                                    hasNextPage={hasNextPage}
+                                    hasPrevPage={hasPrevPage}
+                                    startIndex={startIndex}
+                                    endIndex={endIndex}
+                                    totalItems={totalItems}
+                                />
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
+        </div>
 
             <AjustarStockBodegaModal
                 inventario={selectedInventario}

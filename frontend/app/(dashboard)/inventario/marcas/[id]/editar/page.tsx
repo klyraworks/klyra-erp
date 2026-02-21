@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import {useEffect, useRef, useState} from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { Header } from "@/src/shared/components/header"
@@ -17,6 +17,7 @@ export default function EditarMarcaPage() {
     const [marca, setMarca] = useState<Marca | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(false)
+    const formRef = useRef<HTMLFormElement>(null!)
 
     useEffect(() => {
         if (!marcaId) return
@@ -90,12 +91,19 @@ export default function EditarMarcaPage() {
                             <i className="fa-solid fa-arrow-left"></i>
                             <span className="hidden sm:inline">Volver</span>
                         </Link>
+                        <button
+                            onClick={() => formRef.current?.requestSubmit()}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+                        >
+                            <i className="fa-solid fa-save"></i>
+                            <span className="hidden sm:inline">Editar Marca</span>
+                        </button>
                     </div>
                 }
             />
             <main className="flex-1 overflow-y-auto p-6">
                 <div className="max-w-7xl mx-auto">
-                    <MarcaForm mode="edit" marca={marca} />
+                    <MarcaForm mode="edit" marca={marca} formRef={formRef} />
                 </div>
             </main>
         </>

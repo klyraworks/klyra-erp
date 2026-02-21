@@ -322,7 +322,7 @@ export interface Producto {
     imagen?: string | null
 
     // Stock
-    stock_total?: number
+    stock_total?: number | undefined | null
     stock_estado?: 'normal' | 'medio' | 'bajo' | 'agotado'
     inventarios?: StockBodega[]
 

@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useStore, useBodegas, useProductos } from "@/src/core/store"
 import { Select } from "@/components/select/select-klyra"
@@ -13,6 +13,7 @@ interface MovimientoFormProps {
     tipo: 'entrada' | 'salida' | 'transferencia'
     bodegaIdInicial?: string
     productoIdInicial?: string
+    formRef?: React.RefObject<HTMLFormElement>
 }
 
 interface DetalleProducto {
@@ -24,7 +25,7 @@ interface DetalleProducto {
     observaciones?: string
 }
 
-export function MovimientoForm({ tipo, bodegaIdInicial, productoIdInicial }: MovimientoFormProps) {
+export function MovimientoForm({ tipo, bodegaIdInicial, productoIdInicial, formRef }: MovimientoFormProps) {
     const router = useRouter()
     const { data: bodegas, isLoading: loadingBodegas } = useBodegas()
     const { data: productos, isLoading: loadingProductos } = useProductos()
@@ -248,7 +249,7 @@ export function MovimientoForm({ tipo, bodegaIdInicial, productoIdInicial }: Mov
     }
 
     return (
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 gap-6">
             <div className="lg:col-span-2 space-y-6">
                 {/* Información de Bodegas */}
                 <div className="bg-card rounded-xl border border-border shadow-sm p-6">
@@ -385,7 +386,7 @@ export function MovimientoForm({ tipo, bodegaIdInicial, productoIdInicial }: Mov
                                     options={productos?.filter(p => !detalles.find(d => d.producto.id === p.id)).map(p => ({
                                         value: p.id,
                                         label: p.nombre,
-                                        description: `${p.codigo} - Stock: ${p.stock}`
+                                        description: `${p.codigo} - Stock: ${p.stock_total}`
                                     })) || []}
                                     value={productoSeleccionado}
                                     onChange={(value) => setProductoSeleccionado(value.toString())}
@@ -601,36 +602,6 @@ export function MovimientoForm({ tipo, bodegaIdInicial, productoIdInicial }: Mov
                             </div>
                         )}
                     </div>
-                </div>
-
-                {/* Acciones */}
-                <div className="flex flex-col gap-3">
-                    <button
-                        type="button"
-                        onClick={handleCancel}
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                    >
-                        <i className="fa-solid fa-times"></i>
-                        Cancelar
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={loading || detalles.length === 0}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                    >
-                        {loading ? (
-                            <>
-                                <i className="fa-solid fa-spinner fa-spin"></i>
-                                Registrando...
-                            </>
-                        ) : (
-                            <>
-                                <i className="fa-solid fa-save"></i>
-                                Registrar {tipo === 'entrada' ? 'Entrada' : tipo === 'salida' ? 'Salida' : 'Transferencia'}
-                            </>
-                        )}
-                    </button>
                 </div>
             </div>
         </form>
