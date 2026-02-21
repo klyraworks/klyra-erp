@@ -1,3 +1,4 @@
+// frontend/src/modules/inventario/components/stock-section.tsx
 "use client"
 
 import {useEffect, useRef, useState} from "react"
@@ -20,7 +21,7 @@ import {CambiarUbicacionModal} from "@/src/modules/inventario/modals/cambiar-ubi
 import {ReservarStockModal} from "@/src/modules/inventario/modals/reservar-stock-modal"
 import {StockItem} from "@/src/core/api/types"
 
-function StockPorBodegaChart({inventario}: { inventario: StockItem[] | undefined }) {
+export function StockPorBodegaChart({inventario}: { inventario: StockItem[] | undefined }) {
     const chartRef = useRef<HTMLDivElement>(null)
     const {theme} = useTheme()
 
@@ -99,7 +100,7 @@ function StockPorBodegaChart({inventario}: { inventario: StockItem[] | undefined
     return <div ref={chartRef} className="w-full h-[300px]"/>
 }
 
-function EstadoStockChart({inventario}: { inventario: StockItem[] | undefined }) {
+export function EstadoStockChart({inventario}: { inventario: StockItem[] | undefined }) {
     const chartRef = useRef<HTMLDivElement>(null)
     const {theme} = useTheme()
 
@@ -257,23 +258,6 @@ export function StockSection({compact = false}: StockSectionProps) {
 
     return (
         <>
-            {!compact && inventario && inventario.length > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <div className="bg-card rounded-xl border border-border shadow-sm p-6">
-                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                            STOCK POR BODEGA
-                        </h3>
-                        <StockPorBodegaChart inventario={inventario}/>
-                    </div>
-                    <div className="bg-card rounded-xl border border-border shadow-sm p-6">
-                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                            ESTADO DE INVENTARIO
-                        </h3>
-                        <EstadoStockChart inventario={inventario}/>
-                    </div>
-                </div>
-            )}
-
             <div className="bg-card rounded-xl border border-border shadow-sm">
                 <div className="flex items-center justify-between p-6 border-b border-border">
                     <div className="flex items-center gap-3">
