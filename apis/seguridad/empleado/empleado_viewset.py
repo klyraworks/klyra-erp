@@ -25,6 +25,7 @@ from apis.seguridad.empleado.empleado_serializer import (
     EmpleadoDetailSerializer,
     EmpleadoUpdateSerializer,
     CambiarEstadoSerializer,
+    PersonaSerializer
 )
 
 class EmpleadoViewSet(TenantViewSet):
@@ -213,6 +214,7 @@ class EmpleadoViewSet(TenantViewSet):
                 context={'request': request}
             )
             serializer.is_valid(raise_exception=True)
+
             empleado = serializer.save(updated_by=request.user)
 
             self.logger.info(
@@ -415,7 +417,7 @@ class EmpleadoViewSet(TenantViewSet):
             q: Texto a buscar (nombre, apellido, cédula, username, puesto)
 
         Ejemplo:
-            GET /api/empleados/buscar/?q=carlos
+            GET api/seguridad/empleados/buscar/?q=carlos
         """
         try:
             query = request.query_params.get('q', '').strip()
@@ -430,7 +432,7 @@ class EmpleadoViewSet(TenantViewSet):
                 models.Q(persona__apellido2__icontains=query) |
                 models.Q(persona__cedula__icontains=query) |
                 models.Q(usuario__username__icontains=query) |
-                models.Q(puesto__icontains=query)
+                models.Q(puesto__nombre__icontains=query)
             ).filter(
                 estado='activo'
             )[:20]  # Limitar resultados para performance
@@ -462,6 +464,7 @@ class EmpleadoViewSet(TenantViewSet):
         empresa      = request.empresa
         persona_data = validated_data['persona']
         crear_acceso = validated_data.get('crear_acceso', True)
+        puesto       = validated_data['puesto']
 
         # 1. Crear Persona
         persona = Persona.objects.create(
@@ -479,7 +482,7 @@ class EmpleadoViewSet(TenantViewSet):
             empresa=empresa,
             persona=persona,
             usuario=usuario,
-            puesto=validated_data['puesto'],
+            puesto=puesto,
             salario=validated_data['salario'],
             fecha_contratacion=validated_data['fecha_contratacion'],
             estado=validated_data.get('estado', 'activo'),
@@ -546,7 +549,7 @@ class EmpleadoViewSet(TenantViewSet):
             exito, _ = EmailService.send_notification(
                 employee=empleado,
                 subject_text="Activa tu cuenta en el sistema",
-                title="¡Bienvenido al equipo!",
+                title=f"¡Bienvenido al {empleado.empresa.nombre_comercial}!",
                 subtitle="Tu cuenta ha sido creada exitosamente",
                 message=(
                     f"Hola {empleado.persona.nombre1}, tu cuenta está lista. "

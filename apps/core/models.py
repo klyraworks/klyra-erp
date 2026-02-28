@@ -198,6 +198,12 @@ class BaseModel(models.Model):
 class Persona(models.Model):
     """Datos personales de personas naturales"""
 
+    SEXO_CHOICES = (
+        ('M', 'Masculino'),
+        ('F', 'Femenino'),
+        ('O', 'Otro'),
+    )
+
     # ==================== CAMPOS ====================
     nombre1 = models.CharField(max_length=100, verbose_name="Primer Nombre")
     nombre2 = models.CharField(max_length=100, verbose_name="Segundo Nombre", null=True, blank=True)
@@ -206,7 +212,10 @@ class Persona(models.Model):
     cedula = models.CharField(max_length=10, verbose_name="Cédula", validators=[validar_cedula_ecuatoriana], null=True, blank=True)
     email = models.EmailField(verbose_name="Correo Electrónico", null=True, blank=True)
     telefono = models.CharField(max_length=10, null=True, blank=True, verbose_name="Número de Teléfono")
-    direccion = models.ForeignKey(SubRegion, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Dirección", related_name='personas')
+    ciudad = models.ForeignKey(SubRegion, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Ciuda", related_name='personas')
+    primera_direccion = models.CharField(blank=True, null=True, verbose_name="Primera dirección", max_length=255)
+    segunda_direccion = models.CharField(blank=True, null=True, verbose_name="Segunda dirección", max_length=255)
+    sexo = models.CharField(max_length=1, choices=SEXO_CHOICES, default='O', verbose_name="Sexo")
     pasaporte = models.CharField(max_length=9, validators=[validar_pasaporte], null=True, blank=True, verbose_name="Número de Pasaporte")
     fecha_nacimiento = models.DateField(null=True, blank=True, verbose_name="Fecha de Nacimiento")
     empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='personas')

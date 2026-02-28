@@ -294,7 +294,7 @@ class ClienteViewSet(PermissionCheckMixin, TenantViewSet):
     def buscar(self, request):
         """
         Buscar clientes por término de búsqueda.
-        GET /api/clientes/buscar/?q=termino
+        GET /api/personas/clientes/buscar/?q=termino
         Permiso: view_cliente
         """
         try:
@@ -344,7 +344,7 @@ class ClienteViewSet(PermissionCheckMixin, TenantViewSet):
     def activar(self, request, pk=None):
         """
         Activar un cliente.
-        POST /api/clientes/{id}/activar/
+        POST /api/personas/clientes/{id}/activar/
         Permiso: delete_cliente
         """
         try:
@@ -393,7 +393,7 @@ class ClienteViewSet(PermissionCheckMixin, TenantViewSet):
     def historial_compras(self, request, pk=None):
         """
         Ver historial de compras de un cliente.
-        GET /api/clientes/{id}/historial-compras/
+        GET /api/personas/clientes/{id}/historial-compras/
         Permiso: ver_historial_compras
         """
         try:
@@ -449,7 +449,7 @@ class ClienteViewSet(PermissionCheckMixin, TenantViewSet):
     def gestionar_credito(self, request, pk=None):
         """
         Gestionar límite de crédito del cliente.
-        POST /api/clientes/{id}/gestionar-credito/
+        POST /api/personas/clientes/{id}/gestionar-credito/
         Body: {"limite_credito": 5000.00}
         Permiso: gestionar_credito (Solo Gerente)
         """

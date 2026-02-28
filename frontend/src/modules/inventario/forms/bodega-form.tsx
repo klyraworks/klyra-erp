@@ -46,7 +46,7 @@ export function BodegaForm({ mode, bodega, formRef }: BodegaFormProps) {
             if (!isEditMode || !bodega?.responsable?.id) return
             try {
                 const data = await apiFetch<BuscarResponse<EmpleadoListItem>>(
-                    `/api/empleados/buscar/?q=${bodega.responsable.id}`
+                    `/api/seguridad/empleados/buscar/?q=${bodega.responsable.id}`
                 )
                 const empleado = data.results[0] ?? null
                 setEmpleadoInicial(empleado)
@@ -86,7 +86,7 @@ export function BodegaForm({ mode, bodega, formRef }: BodegaFormProps) {
         setLoadingEmpleados(true)
         try {
             const data = await apiFetch<BuscarResponse<EmpleadoListItem>>(
-                `/api/empleados/buscar/?q=${encodeURIComponent(query)}`
+                `/api/seguridad/empleados/buscar/?q=${encodeURIComponent(query)}`
             )
             setEmpleados(data.results)
         } catch (err) {

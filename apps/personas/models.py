@@ -121,10 +121,12 @@ class Cliente(BaseModel):
         indexes = [
             models.Index(fields=['empresa', 'codigo']),
             models.Index(fields=['identificacion']),
+            models.Index(fields=['empresa', 'persona']),  # + esto
         ]
         constraints = [
             models.UniqueConstraint(fields=['codigo', 'empresa'], name='unique_codigo_cliente_empresa'),
             models.UniqueConstraint(fields=['identificacion', 'empresa'], name='unique_identificacion_per_empresa'),
+            models.UniqueConstraint(fields=['persona', 'empresa'], name='unique_persona_cliente_empresa'),  # + esto
         ]
         permissions = [
             ("ver_historial_compras", "Puede ver historial de compras del cliente"),

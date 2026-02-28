@@ -17,7 +17,7 @@ class DepartamentoListSerializer(TenantSerializer):
 
     class Meta:
         model  = Departamento
-        fields = ['id', 'codigo', 'nombre', 'jefe_nombre', 'total_empleados']
+        fields = ['id', 'codigo', 'nombre', 'jefe_nombre', 'total_empleados', 'is_active']
 
     def get_jefe_nombre(self, obj):
         if obj.jefe:

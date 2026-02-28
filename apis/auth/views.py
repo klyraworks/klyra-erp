@@ -136,7 +136,7 @@ class LoginView(APIView):
                     'id': str(empleado.id),
                     'codigo': empleado.codigo,
                     'nombre_completo': empleado.get_full_name(),
-                    'puesto': empleado.puesto,
+                    'puesto': empleado.puesto.nombre if empleado.puesto else None,
                     'departamento': empleado.departamento.nombre if empleado.departamento else None,
                     'estado': empleado.estado,
                     'debe_cambiar_password': empleado.debe_cambiar_password
@@ -218,7 +218,7 @@ class CheckAuthView(APIView):
                         'id': str(empleado.id),
                         'codigo': empleado.codigo,
                         'nombre_completo': empleado.get_full_name(),
-                        'puesto': empleado.puesto,
+                        'puesto': empleado.puesto.nombre if empleado.puesto else None,
                         'departamento': empleado.departamento.nombre if empleado.departamento else None,
                         'estado': empleado.estado
                     },
@@ -276,7 +276,7 @@ class UserInfoView(APIView):
                         'id': str(empleado.id),
                         'codigo': empleado.codigo,
                         'nombre_completo': empleado.get_full_name(),
-                        'puesto': empleado.puesto,
+                        'puesto': empleado.puesto.nombre if empleado.puesto else None,
                         'departamento': empleado.departamento.nombre if empleado.departamento else None,
                         'fecha_contratacion': empleado.fecha_contratacion,
                         'estado': empleado.estado,

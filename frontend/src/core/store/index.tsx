@@ -3,10 +3,10 @@
 
 import {createContext, useContext, useState, useEffect, type ReactNode} from "react"
 import useSWR, {mutate} from "swr"
-import type {
+import {
     Venta,
     Producto,
-    Cliente,
+    ClienteListItem,
     Bodega,
     Pago,
     MovimientoInventario,
@@ -22,7 +22,11 @@ import type {
     ReservarStockPayload,
     Ubicacion,
     Ciudad,
-    StockItem
+    StockItem,
+    Empleado,
+    UserBasico,
+    Departamento,
+    Puesto, PuestoListItem, Rol,
 } from "@/src/core/api/types"
 import {swrFetcher, apiFetch} from "@/src/core/api/client"
 
@@ -40,20 +44,6 @@ function extractArray<T>(data: T[] | PaginatedResponse<T> | undefined): T[] {
     return []
 }
 
-interface User {
-    id: number
-    username: string
-    email: string
-}
-
-interface Empleado {
-    id: string
-    nombres: string
-    apellidos: string
-    cargo?: string
-    departamento?: string
-}
-
 interface Empresa {
     id: string
     nombre: string
@@ -62,10 +52,10 @@ interface Empresa {
 }
 
 interface StoreContextType {
-    user: User | null
+    user: UserBasico | null
     empleado: Empleado | null
     empresa: Empresa | null
-    setAuth: (user: User, empleado: Empleado, empresa: Empresa) => void
+    setAuth: (user: UserBasico, empleado: Empleado, empresa: Empresa) => void
     clearAuth: () => void
     isAuthenticated: boolean
     refreshAll: () => void
@@ -74,11 +64,11 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | null>(null)
 
 export function StoreProvider({children}: { children: ReactNode }) {
-    const [user, setUser] = useState<User | null>(null)
+    const [user, setUser] = useState<UserBasico | null>(null)
     const [empleado, setEmpleado] = useState<Empleado | null>(null)
     const [empresa, setEmpresa] = useState<Empresa | null>(null)
 
-    const setAuth = (newUser: User, newEmpleado: Empleado, newEmpresa: Empresa) => {
+    const setAuth = (newUser: UserBasico, newEmpleado: Empleado, newEmpresa: Empresa) => {
         setUser(newUser)
         setEmpleado(newEmpleado)
         setEmpresa(newEmpresa)
@@ -93,7 +83,7 @@ export function StoreProvider({children}: { children: ReactNode }) {
     const refreshAll = () => {
         mutate(["/api/ventas/"])
         mutate("/api/productos/")
-        mutate("/api/clientes/")
+        mutate("/api/personas/clientes/")
         mutate("/api/bodegas/")
         mutate("/api/pagos/")
         mutate("/api/movimientos-inventario/")
@@ -137,8 +127,11 @@ export function useProductos() {
 }
 
 export function useClientes() {
-    const result = useSWR<Cliente[] | PaginatedResponse<Cliente>>("/api/clientes/", swrFetcher)
-    return {...result, data: extractArray(result.data)}
+    const result = useSWR<ClienteListItem[] | PaginatedResponse<ClienteListItem>>(
+        "/api/personas/clientes/",
+        swrFetcher
+    )
+    return { ...result, data: extractArray(result.data) }
 }
 
 export function useBodegas() {
@@ -155,6 +148,28 @@ export function useCategorias() {
     const result = useSWR<Categoria[] | PaginatedResponse<Categoria>>("/api/categorias/", swrFetcher)
     return {...result, data: extractArray(result.data)}
 }
+
+export function useDepartamentos() {
+    const result = useSWR<Departamento[] | PaginatedResponse<Departamento>>("/api/rrhh/departamentos/", swrFetcher)
+    return {...result, data: extractArray(result.data)}
+}
+
+export function useEmpleados() {
+    const result = useSWR<Empleado[] | PaginatedResponse<Empleado>>("/api/seguridad/empleados/", swrFetcher)
+    return {...result, data: extractArray(result.data)}
+}
+
+export function usePuestos() {
+    const result = useSWR<PuestoListItem[] | PaginatedResponse<PuestoListItem>>("/api/rrhh/puestos/", swrFetcher)
+    return {...result, data: extractArray(result.data)}
+}
+
+export function useRoles() {
+    const result = useSWR<Rol[] | PaginatedResponse<Rol>>("/api/seguridad/roles/", swrFetcher)
+    return {...result, data: extractArray(result.data)}
+}
+
+
 
 export function useCategoriasArbolExpandido() {
     const result = useSWR<{ total_categorias: number; categorias: Categoria[] }>(
@@ -192,7 +207,7 @@ export function useUbicaciones(bodegaId?: string) {
 }
 
 export function useCiudades() {
-    const result = useSWR<Ciudad[]>("/api/ciudades/", swrFetcher)
+    const result = useSWR<Ciudad[]>("/api/core/ciudades/", swrFetcher)
     return result
 }
 

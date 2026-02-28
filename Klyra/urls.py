@@ -41,6 +41,8 @@ urlpatterns = [
     path('', include('apis.seguridad.urls')),
     path('', include('apis.ventas.urls')),
     path('', include('apis.inventario.urls')),
+    path('', include('apis.rrhh.urls')),
+    path('', include('apis.personas.urls')),
 ]
 
 if settings.DEBUG:

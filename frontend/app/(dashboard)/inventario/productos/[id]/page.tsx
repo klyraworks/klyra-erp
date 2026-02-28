@@ -43,7 +43,7 @@ export default function ProductoDetallePage() {
     <>
       <Header
         title={producto.nombre}
-        breadcrumb={["Klyra", "Inventario", "Productos", producto.nombre]}
+        breadcrumb={["Inventario", "Productos", producto.nombre]}
         actions={
           <button
             onClick={() => router.push(`/inventario/productos/${producto.id}/editar`)}

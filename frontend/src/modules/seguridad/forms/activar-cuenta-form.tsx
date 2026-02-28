@@ -46,11 +46,11 @@ const getApiUrl = (): string => {
 
 async function verificarToken(token: string): Promise<VerificarTokenResponse> {
     const res = await fetch(
-        `${getApiUrl()}/api/verificar-token/?token=${token}`,
+        `${getApiUrl()}/api/seguridad/verificar-token/?token=${token}`,
         { method: 'GET', headers: { 'Content-Type': 'application/json' } }
     )
     const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Token inválido o expirado.')
+    if (!res.ok) throw new Error(data.mensaje || 'Token inválido o expirado.')
     return data.data
 }
 
@@ -60,7 +60,7 @@ async function activarCuenta(
     password_confirmacion: string
 ): Promise<ActivarCuentaResponse> {
     const res = await fetch(
-        `${getApiUrl()}/api/activar-cuenta/`,
+        `${getApiUrl()}/api/seguridad/activar-cuenta/`,
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -68,7 +68,7 @@ async function activarCuenta(
         }
     )
     const data = await res.json()
-    if (!res.ok) throw new Error(data.error || data.errores?.password?.[0] || 'Error al activar la cuenta.')
+    if (!res.ok) throw new Error(data.mensaje || 'Error al activar la cuenta.')
     return data.data
 }
 

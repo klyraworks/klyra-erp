@@ -195,14 +195,14 @@ Detalles relevantes — `CategoriaViewSet` (`apis/inventario/categoria/categoria
 
 ### Módulo Ventas
 Archivo: `apis/ventas/urls.py` (ACTIVO)
-- `GET/POST /api/clientes/` y `GET/PUT/PATCH/DELETE /api/clientes/{id}/`
+- `GET/POST /api/personas/clientes/` y `GET/PUT/PATCH/DELETE /api/personas/clientes/{id}/`
 - `GET/POST /api/productos/` y `GET/PUT/PATCH/DELETE /api/productos/{id}/` (expuesto aquí para consultas desde ventas)
 - `GET/POST /api/ventas/` y `GET/PUT/PATCH/DELETE /api/ventas/{id}/`
 - `GET/POST /api/pagos/` y `GET/PUT/PATCH/DELETE /api/pagos/{id}/`
 
 ### Módulo RRHH
 Archivo: `apis/rrhh/urls.py` (ACTIVO)
-- `GET/POST /api/empleados/` y `GET/PUT/PATCH/DELETE /api/empleados/{id}/`
+- `GET/POST api/seguridad//` y `GET/PUT/PATCH/DELETE api/seguridad//{id}/`
 
 Notas de estado:
 - Todos los routers anteriores están INCLUIDOS en `Klyra/urls.py` → ENDPOINTS ACTIVOS.

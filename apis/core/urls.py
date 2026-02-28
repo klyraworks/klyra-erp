@@ -10,6 +10,6 @@ router.register('enviaremail', EnvioEmail, basename='enviaremail')  # Agregado b
 router.register('ciudades', CiudadViewSet)
 
 urlpatterns = [
-    path('api/', include(router.urls)),
-    path('api/user/me/', get_current_user, name='current_user'),
+    path('api/core/', include(router.urls)),
+    path('api/core/user/me/', get_current_user, name='current_user'),
 ]

@@ -50,7 +50,7 @@ export default function EditarProductoPage() {
             <>
                 <Header
                     title="Error"
-                    breadcrumb={["Klyra", "Inventario", "Productos", "Error"]}
+                    breadcrumb={["Inventario", "Productos", "Error"]}
                 />
                 <main className="flex-1 overflow-y-auto p-6">
                     <div className="bg-card rounded-xl border border-border p-6 text-center">

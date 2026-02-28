@@ -625,7 +625,7 @@ export function ProductoForm({mode, producto, formRef}: ProductoFormProps) {
                                             description: u.tipo
                                         }))}
                                         value={nuevaConversion.unidad_origen || ''}
-                                        onChange={(value) => setNuevaConversion(prev => ({...prev, unidad_origen: value || null}))}
+                                        onChange={(value) => setNuevaConversion()}
                                         searchable
                                         placeholder="Ej: Galón"
                                         className="w-full"

@@ -3,6 +3,7 @@ import uuid
 
 from apps.core.models import BaseModel, Empresa
 from apps.personas.models import Persona
+from decimal import Decimal
 from django.contrib.auth.models import User, Group
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -27,7 +28,7 @@ class Empleado(BaseModel):
     codigo = models.CharField(max_length=20, verbose_name="Código", editable=False)
     persona = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='empleados', verbose_name="Persona")
     usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='empleados', verbose_name="Usuario del Sistema")
-    puesto = models.CharField(max_length=100, verbose_name="Puesto de Trabajo")
+    puesto = models.ForeignKey('rrhh.Puesto', on_delete=models.SET_NULL, null=True, blank=True, related_name='empleados', verbose_name="Puesto")
     fecha_contratacion = models.DateField(verbose_name="Fecha de Contratación")
     fecha_terminacion = models.DateField(null=True, blank=True, verbose_name="Fecha de Terminación")
     salario = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Salario Actual")

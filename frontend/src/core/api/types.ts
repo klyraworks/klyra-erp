@@ -34,6 +34,11 @@ export interface BuscarResponse<T> {
 // GEOGRAFÍA
 // ============================================================
 
+export interface Pais {
+    id: number
+    name: string
+}
+
 export interface Region {
     id: number
     geoname_id: number
@@ -44,6 +49,7 @@ export interface Ciudad {
     id: number
     name: string
     region: Region | null
+    pais: Pais | null
 }
 
 
@@ -61,7 +67,7 @@ export interface Persona {
     pasaporte: string | null
     email: string
     telefono: string | null
-    direccion: string | null
+    ciudad: Ciudad
     fecha_nacimiento: string | null
 }
 
@@ -92,6 +98,18 @@ export interface DepartamentoBasico {
     nombre: string
 }
 
+export interface Departamento {
+    id: string
+    codigo: string
+    nombre: string
+    descripcion?: string
+    jefe?: Empleado | null
+    jefe_nombre?: string | null
+    total_empleados: number
+    is_active: boolean
+    created_at?: string | number
+}
+
 
 // ============================================================
 // EMPLEADOS
@@ -110,6 +128,7 @@ export interface EmpleadoListItem {
     departamento_nombre: string | null
     cuenta_activada: boolean
     fecha_contratacion: string
+    tiene_acceso: boolean
 }
 
 /** Detalle completo — usado en retrieve */
@@ -119,7 +138,7 @@ export interface Empleado {
     persona: Persona
     usuario: UserBasico | null
     username: string | null
-    puesto: string
+    puesto: Puesto
     salario: number
     fecha_contratacion: string
     fecha_terminacion: string | null
@@ -132,6 +151,12 @@ export interface Empleado {
     created_at: string
     updated_at: string
     email_activacion_enviado?: boolean
+    nombre_completo: string
+    cedula: string | null
+    email: string
+    rol_nombre: string | null
+    departamento_nombre: string | null
+    tiene_acceso: boolean
 }
 
 /** Payload para crear */
@@ -420,17 +445,58 @@ export interface Componente {
 // CLIENTES
 // ============================================================
 
+// ── Agregar a src/core/api/types.ts ──────────────────────────────────────────
+
+export type ClienteTipo = "natural" | "juridica"
+export type ClienteTipoIdentificacion = "ruc" | "cedula" | "pasaporte" | "consumidor_final"
+
 export interface Cliente {
     id: string
-    ruc: string
-    razon_social?: string
-    nombre_completo?: string
-    direccion?: string
-    telefono?: string
-    email?: string
+    codigo: string
+    tipo: ClienteTipo
+    tipo_identificacion: ClienteTipoIdentificacion
+    identificacion: string
+    razon_social: string
+    limite_credito: string
+    descuento_porcentaje: string
+    email_facturacion: string | null
+    telefono_facturacion: string | null
+    direccion: string | null
+    is_active: boolean
+    created_at: string
+    updated_at: string
+}
+
+export interface ClienteListItem {
+    id: string
+    codigo: string
+    tipo: ClienteTipo
+    tipo_identificacion: ClienteTipoIdentificacion
+    identificacion: string
+    razon_social: string
+    limite_credito: string
+    is_active: boolean
+}
+
+export interface ClienteCreate {
+    tipo: ClienteTipo
+    tipo_identificacion: ClienteTipoIdentificacion
+    identificacion: string
+    razon_social: string
+    limite_credito?: string
+    descuento_porcentaje?: string
+    email_facturacion?: string | null
+    telefono_facturacion?: string | null
+    direccion?: string | null
+}
+
+export interface ClienteUpdate extends Partial<ClienteCreate> {}
+
+export interface ClienteSaldo {
     limite_credito: number
     credito_disponible: number
-    activo?: boolean
+    credito_usado: number
+    porcentaje_usado: number
 }
 
 
@@ -586,6 +652,81 @@ export interface EtiquetaProductoResponse {
 
 
 // ============================================================
+// ROLES - PERMISOS
+// ============================================================
+
+export interface PermisoDjango {
+    id: number
+    codename: string
+    name: string
+}
+
+export interface GrupoDjango {
+    id: number
+    nombre: string
+    permisos: PermisoDjango[]
+}
+
+export interface RolListItem {
+    id: string
+    codigo: string
+    nombre: string
+    descripcion: string
+    nivel_jerarquico: number
+    total_grupos: number
+    total_empleados: number
+}
+
+export interface Rol {
+    id: string
+    codigo: string
+    nombre: string
+    descripcion: string
+    nivel_jerarquico: number
+    grupos_django: GrupoDjango[]
+    total_empleados: number
+    monto_maximo_descuento: string | null
+    monto_maximo_aprobacion: string | null
+    limite_credito_clientes: string | null
+    puede_aprobar_vacaciones: boolean
+    puede_ver_salarios: boolean
+    puede_modificar_precios: boolean
+    puede_anular_documentos: boolean
+    is_active: boolean
+    created_at: string
+    updated_at: string
+}
+
+// ============================================================
+// INVENTARIO — PAYLOADS
+// ============================================================
+
+export interface PuestoListItem {
+    id: string
+    codigo: string
+    nombre: string
+    descripcion?: string
+    departamento_nombre: string | null
+    salario_minimo: string | null
+    salario_maximo: string | null
+    total_empleados: number
+}
+
+export interface Puesto {
+    id: string
+    codigo: string
+    nombre: string
+    descripcion: string
+    departamento: { id: string; codigo: string; nombre: string } | null
+    salario_minimo: string | null
+    salario_maximo: string | null
+    total_empleados: number
+    is_active: boolean
+    created_at: string
+    updated_at: string
+}
+
+// ============================================================
 // INVENTARIO — PAYLOADS
 // ============================================================
 
@@ -621,3 +762,4 @@ export interface Ubicacion {
     nivel: string
     descripcion?: string
 }
+

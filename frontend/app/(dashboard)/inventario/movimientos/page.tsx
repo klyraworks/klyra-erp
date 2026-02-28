@@ -23,7 +23,7 @@ export default function MovimientosPage() {
     <>
       <Header
           title="Movimientos de Inventario"
-          breadcrumb={["Klyra", "Inventario", "Movimientos"]}
+          breadcrumb={["Inventario", "Movimientos"]}
           actions={
               <div className={"flex gap-2"}>
                   <button

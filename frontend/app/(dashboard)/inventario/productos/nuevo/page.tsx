@@ -12,7 +12,7 @@ export default function NuevoProductoRoute() {
         <>
             <Header
                 title="Nuevo Producto"
-                breadcrumb={["Klyra", "Inventario", "Productos", "Nuevo"]}
+                breadcrumb={["Inventario", "Productos", "Nuevo"]}
                 actions={
                     <div className="flex items-center gap-2">
                         <Link

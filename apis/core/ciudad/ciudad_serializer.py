@@ -1,4 +1,4 @@
-# apis/base/ciudad/ciudad_serializer.py
+# apis/core/ciudad/ciudad_serializer.py
 
 from rest_framework import serializers
 from cities_light.models import SubRegion, Region, Country

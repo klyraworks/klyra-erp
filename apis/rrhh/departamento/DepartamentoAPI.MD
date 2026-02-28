@@ -1,6 +1,6 @@
 # API — Departamentos
 
-**Base URL:** `/api/departamentos/`  
+**Base URL:** `/api/rrhh/departamentos/`  
 **App:** `rrhh`  
 **Permisos requeridos:** `ver_departamento`, `crear_departamento`, `editar_departamento`, `eliminar_departamento`
 
@@ -10,12 +10,12 @@
 
 | Método | URL | Permiso | Descripción |
 |--------|-----|---------|-------------|
-| GET | `/api/departamentos/` | `ver_departamento` | Listar todos los departamentos |
-| POST | `/api/departamentos/` | `crear_departamento` | Crear departamento |
-| GET | `/api/departamentos/{id}/` | `ver_departamento` | Detalle de un departamento |
-| PUT/PATCH | `/api/departamentos/{id}/` | `editar_departamento` | Actualizar departamento |
-| DELETE | `/api/departamentos/{id}/` | `eliminar_departamento` | Soft delete |
-| GET | `/api/departamentos/buscar/?q=texto` | `ver_departamento` | Búsqueda para selects |
+| GET | `/api/rrhh/departamentos/` | `ver_departamento` | Listar todos los departamentos |
+| POST | `/api/rrhh/departamentos/` | `crear_departamento` | Crear departamento |
+| GET | `/api/rrhh/departamentos/{id}/` | `ver_departamento` | Detalle de un departamento |
+| PUT/PATCH | `/api/rrhh/departamentos/{id}/` | `editar_departamento` | Actualizar departamento |
+| DELETE | `/api/rrhh/departamentos/{id}/` | `eliminar_departamento` | Soft delete |
+| GET | `/api/rrhh/departamentos/buscar/?q=texto` | `ver_departamento` | Búsqueda para selects |
 
 ---
 
@@ -50,7 +50,7 @@
 ### Crear departamento
 
 ```json
-POST /api/departamentos/
+POST /api/rrhh/departamentos/
 {
   "nombre": "Tecnología",
   "descripcion": "Departamento de desarrollo y sistemas",
@@ -84,7 +84,7 @@ POST /api/departamentos/
 ### Quitar jefe de un departamento
 
 ```json
-PATCH /api/departamentos/{id}/
+PATCH /api/rrhh/departamentos/{id}/
 {
   "jefe_id": null
 }
@@ -93,7 +93,7 @@ PATCH /api/departamentos/{id}/
 ### Búsqueda para select
 
 ```
-GET /api/departamentos/buscar/?q=tec
+GET /api/rrhh/departamentos/buscar/?q=tec
 ```
 
 ```json

@@ -37,7 +37,7 @@ export function CategoriasSection({compact = false}: CategoriasSectionProps) {
         totalItems,
     } = usePagination({
         data: categorias || [],
-        itemsPerPage: compact ? 5 : 10, // 5 para compact, 10 para vista completa
+        itemsPerPage: compact ? 5 : 10,
     })
 
     const displayCategorias = compact ? categorias?.slice(0, 5) : paginatedData

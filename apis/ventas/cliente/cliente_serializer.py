@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 from apps.ventas.models import Cliente
 from apps.core.models import Persona
-from apis.core.PersonaSerializer import PersonaSerializer
+from apis.core.personas.persona_serializer import PersonaSerializer
 from cities_light.models import SubRegion
 from apis.core.SerializerBase import TenantSerializer
 
@@ -86,8 +86,8 @@ class ClienteSerializer(TenantSerializer):
             }
 
             # Usar helper para dirección
-            data['persona']['direccion'] = SerializerHelpers.build_address_representation(
-                instance.persona.direccion
+            data['persona']['ciudad'] = SerializerHelpers.build_address_representation(
+                instance.persona.ciudad
             )
 
         data['estado'] = 'Activo' if instance.is_active else 'Inactivo'

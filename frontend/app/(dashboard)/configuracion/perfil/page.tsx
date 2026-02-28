@@ -5,7 +5,6 @@ import { Header } from "@/src/shared/components/header"
 import { useStore } from "@/src/core/store"
 
 export default function ConfiguracionPage() {
-  const { apiUrl, setApiUrl } = useStore()
   const [activeTab, setActiveTab] = useState<"empresa" | "facturacion" | "sistema" | "api">("empresa")
 
   // Mock empresa data
@@ -47,7 +46,6 @@ export default function ConfiguracionPage() {
     diasCreditoDefault: 30,
   })
 
-  const [tempApiUrl, setTempApiUrl] = useState(apiUrl)
 
   const tabs = [
     { id: "empresa", label: "Datos Empresa", icon: "fa-building" },
@@ -558,20 +556,6 @@ export default function ConfiguracionPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      <i className="fa-solid fa-link mr-2 text-muted-foreground"></i>
-                      URL del API Backend
-                    </label>
-                    <input
-                      type="url"
-                      value={tempApiUrl}
-                      onChange={(e) => setTempApiUrl(e.target.value)}
-                      placeholder="http://localhost:8000"
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                    />
-                  </div>
-
                   {/* Connection Status */}
                   <div className="p-4 bg-muted rounded-xl">
                     <div className="flex items-center justify-between">
@@ -602,7 +586,7 @@ export default function ConfiguracionPage() {
                         { endpoint: "/api/auth/login/", desc: "Autenticación" },
                         { endpoint: "/api/ventas/", desc: "Gestión de ventas" },
                         { endpoint: "/api/productos/", desc: "Catálogo de productos" },
-                        { endpoint: "/api/clientes/", desc: "Gestión de clientes" },
+                        { endpoint: "/api/personas/clientes/", desc: "Gestión de clientes" },
                         { endpoint: "/api/pagos/", desc: "Registro de pagos" },
                         { endpoint: "/api/movimientos-inventario/", desc: "Movimientos de inventario" },
                       ].map((item) => (
@@ -612,18 +596,6 @@ export default function ConfiguracionPage() {
                         </div>
                       ))}
                     </div>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                    <button
-                      onClick={() => {
-                        setApiUrl(tempApiUrl)
-                      }}
-                      className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
-                    >
-                      <i className="fa-solid fa-check"></i>
-                      Guardar URL
-                    </button>
                   </div>
                 </div>
               )}

@@ -2,60 +2,16 @@
 import logging
 
 from apis.core.SerializerBase import TenantSerializer
+from apis.core.ciudad.ciudad_serializer import CiudadSerializer
 from apps.core.models import Persona
 from apps.rrhh.models import Departamento, HistorialPuesto
 from apps.seguridad.models import Empleado, Rol
 from django.contrib.auth.models import User
-from functions.services import EmailService
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from utils.validators import (
-    EcuadorianValidators,
-    TextNormalizers,
-    BusinessValidators,
-    SerializerHelpers
-)
+from apis.core.personas.persona_serializer import PersonaSerializer, PersonaUpdateSerializer
 
 logger = logging.getLogger('apps.seguridad')
-
-
-# ==================== PERSONA ====================
-
-class PersonaSerializer(TenantSerializer):
-    """Serializer para creación/edición de Persona"""
-
-    class Meta:
-        model = Persona
-        fields = [
-            'id',
-            'nombre1',
-            'nombre2',
-            'apellido1',
-            'apellido2',
-            'cedula',
-            'pasaporte',
-            'email',
-            'telefono',
-            'direccion',
-            'fecha_nacimiento',
-        ]
-
-    def validate_cedula(self, value):
-        if value and len(value) != 10:
-            raise ValidationError("La cédula debe tener 10 dígitos.")
-        return value
-
-    def validate_pasaporte(self, value):
-        if value and len(value) < 5:
-            raise ValidationError("El pasaporte debe tener al menos 5 caracteres.")
-        return value
-
-    def validate(self, attrs):
-        cedula = attrs.get('cedula')
-        pasaporte = attrs.get('pasaporte')
-        if not cedula and not pasaporte:
-            raise ValidationError("Debe proveer cédula o pasaporte.")
-        return attrs
 
 
 # ==================== EMPLEADO — CREATE ====================
@@ -72,23 +28,17 @@ class EmpleadoCreateSerializer(serializers.Serializer):
     persona = PersonaSerializer()
 
     # -- Datos del empleado
-    puesto            = serializers.CharField(max_length=100)
-    salario           = serializers.DecimalField(max_digits=10, decimal_places=2)
+    salario            = serializers.DecimalField(max_digits=10, decimal_places=2)
     fecha_contratacion = serializers.DateField()
-    estado            = serializers.ChoiceField(
-        choices=Empleado.ESTADO_CHOICES,
-        default='activo'
-    )
+    estado             = serializers.ChoiceField(choices=Empleado.ESTADO_CHOICES, default='activo')
 
     # -- Relaciones opcionales
-    rol_id            = serializers.UUIDField(required=False, allow_null=True)
-    departamento_id   = serializers.UUIDField(required=False, allow_null=True)
+    rol_id             = serializers.UUIDField(required=False, allow_null=True)
+    departamento_id    = serializers.UUIDField(required=False, allow_null=True)
+    puesto_id          = serializers.UUIDField(required=False, allow_null=True)
 
     # -- Control de acceso
-    crear_acceso      = serializers.BooleanField(
-        default=True,
-        help_text="Si es True, crea usuario del sistema y envía email de activación."
-    )
+    crear_acceso       = serializers.BooleanField(default=True, help_text="Si es True, crea usuario del sistema y envía email de activación.")
 
     def validate_salario(self, value):
         if value <= 0:
@@ -139,6 +89,7 @@ class EmpleadoListSerializer(TenantSerializer):
     email           = serializers.CharField(source='persona.email', read_only=True)
     rol_nombre      = serializers.CharField(source='rol.nombre', read_only=True)
     departamento_nombre = serializers.CharField(source='departamento.nombre', read_only=True)
+    tiene_acceso    = serializers.SerializerMethodField()
 
     class Meta:
         model = Empleado
@@ -154,10 +105,14 @@ class EmpleadoListSerializer(TenantSerializer):
             'departamento_nombre',
             'cuenta_activada',
             'fecha_contratacion',
+            'tiene_acceso',
         ]
 
     def get_nombre_completo(self, obj):
         return obj.get_full_name()
+
+    def get_tiene_acceso(self, obj):
+        return obj.usuario_id is not None
 
 
 # ==================== EMPLEADO — DETAIL ====================
@@ -168,6 +123,7 @@ class EmpleadoDetailSerializer(TenantSerializer):
     persona         = PersonaSerializer(read_only=True)
     rol             = serializers.SerializerMethodField()
     departamento    = serializers.SerializerMethodField()
+    puesto          = serializers.SerializerMethodField()
     username        = serializers.CharField(source='usuario.username', read_only=True)
 
     class Meta:
@@ -193,12 +149,17 @@ class EmpleadoDetailSerializer(TenantSerializer):
 
     def get_rol(self, obj):
         if obj.rol:
-            return {'id': str(obj.rol.id), 'nombre': obj.rol.nombre, 'codigo': obj.rol.codigo}
+            return {'id': str(obj.rol.id), 'nombre': obj.rol.nombre, 'codigo': obj.rol.codigo, 'descripcion': obj.rol.descripcion}
         return None
 
     def get_departamento(self, obj):
         if obj.departamento:
-            return {'id': str(obj.departamento.id), 'nombre': obj.departamento.nombre}
+            return {'id': str(obj.departamento.id), 'nombre': obj.departamento.nombre, 'codigo': obj.departamento.codigo, 'descripcion': obj.departamento.descripcion}
+        return None
+
+    def get_puesto(self, obj):
+        if obj.puesto:
+            return {'id': str(obj.puesto.id), 'nombre': obj.puesto.nombre, 'codigo': obj.puesto.codigo, 'descripcion': obj.puesto.descripcion}
         return None
 
 
@@ -207,7 +168,7 @@ class EmpleadoDetailSerializer(TenantSerializer):
 class CambiarEstadoSerializer(serializers.Serializer):
     """Serializer para cambio de estado del empleado"""
 
-    estado = serializers.ChoiceField(choices=Empleado.ESTADO_CHOICES)
+    estado        = serializers.ChoiceField(choices=Empleado.ESTADO_CHOICES)
     observaciones = serializers.CharField(required=False, allow_blank=True)
 
     def validate_estado(self, value):
@@ -220,20 +181,22 @@ class CambiarEstadoSerializer(serializers.Serializer):
 # ==================== ACTUALIZAR EMPLEADO ====================
 
 class EmpleadoUpdateSerializer(TenantSerializer):
-    """Serializer para actualización parcial del empleado"""
 
+    persona         = PersonaUpdateSerializer(required=False)
     rol_id          = serializers.UUIDField(required=False, allow_null=True, write_only=True)
+    puesto_id       = serializers.UUIDField(required=False, allow_null=True, write_only=True)
     departamento_id = serializers.UUIDField(required=False, allow_null=True, write_only=True)
 
     class Meta:
-        model = Empleado
+        model  = Empleado
         fields = [
-            'puesto',
+            'persona',
             'salario',
             'fecha_contratacion',
             'fecha_terminacion',
             'estado',
             'rol_id',
+            'puesto_id',
             'departamento_id',
         ]
 
@@ -245,7 +208,7 @@ class EmpleadoUpdateSerializer(TenantSerializer):
     def validate_rol_id(self, value):
         if value is None:
             return value
-        empresa = self.context['request'].tenant
+        empresa = self.context['request'].empresa
         if not Rol.objects.filter(id=value, empresa=empresa, deleted_at__isnull=True).exists():
             raise ValidationError("El rol no existe o no pertenece a esta empresa.")
         return value
@@ -253,20 +216,30 @@ class EmpleadoUpdateSerializer(TenantSerializer):
     def validate_departamento_id(self, value):
         if value is None:
             return value
-        empresa = self.context['request'].tenant
+        empresa = self.context['request'].empresa
         if not Departamento.objects.filter(id=value, empresa=empresa, deleted_at__isnull=True).exists():
             raise ValidationError("El departamento no existe o no pertenece a esta empresa.")
         return value
 
     def update(self, instance, validated_data):
-        rol_id = validated_data.pop('rol_id', ...)
-        departamento_id = validated_data.pop('departamento_id', ...)
+        # Actualizar Persona si viene en el request
+        persona_data = validated_data.pop('persona', None)
+        if persona_data:
+            for attr, value in persona_data.items():
+                setattr(instance.persona, attr, value)
+            instance.persona.save()
 
-        # Ellipsis = no vino en el request (distinto de None que sería "limpiar")
+        # FKs con Ellipsis para distinguir None de no enviado
+        rol_id          = validated_data.pop('rol_id', ...)
+        departamento_id = validated_data.pop('departamento_id', ...)
+        puesto_id       = validated_data.pop('puesto_id', ...)
+
         if rol_id is not ...:
             instance.rol_id = rol_id
         if departamento_id is not ...:
             instance.departamento_id = departamento_id
+        if puesto_id is not ...:
+            instance.puesto_id = puesto_id
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

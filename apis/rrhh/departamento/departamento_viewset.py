@@ -15,6 +15,7 @@ from apis.rrhh.departamento.departamento_serializer import (
     DepartamentoCreateSerializer,
     DepartamentoUpdateSerializer,
 )
+from django.db.models import Q
 
 
 class DepartamentoViewSet(TenantViewSet):
@@ -22,13 +23,13 @@ class DepartamentoViewSet(TenantViewSet):
     ViewSet para gestión de departamentos organizacionales.
 
     Endpoints:
-        GET    /api/departamentos/              - Listar
-        POST   /api/departamentos/              - Crear
-        GET    /api/departamentos/{id}/         - Detalle
-        PUT    /api/departamentos/{id}/         - Actualizar
-        PATCH  /api/departamentos/{id}/         - Actualizar parcial
-        DELETE /api/departamentos/{id}/         - Eliminar
-        GET    /api/departamentos/buscar/       - Búsqueda para selects
+        GET    /api/rrhh/departamentos/              - Listar
+        POST   /api/rrhh/departamentos/              - Crear
+        GET    /api/rrhh/departamentos/{id}/         - Detalle
+        PUT    /api/rrhh/departamentos/{id}/         - Actualizar
+        PATCH  /api/rrhh/departamentos/{id}/         - Actualizar parcial
+        DELETE /api/rrhh/departamentos/{id}/         - Eliminar
+        GET    /api/rrhh/departamentos/buscar/       - Búsqueda para selects
 
     Permisos:
         - ver_departamento:      GET (list, retrieve, buscar)
@@ -210,16 +211,19 @@ class DepartamentoViewSet(TenantViewSet):
     def buscar(self, request):
         """
         Búsqueda para selects y autocompletes.
-        GET /api/departamentos/buscar/?q=texto
+        GET /api/rrhh/departamentos/buscar/?q=texto
         """
         try:
-            query = request.query_params.get('q', '').strip()
-            if not query:
-                return StandardResponse.success(data={'results': [], 'total': 0})
-
-            resultados = self.get_queryset().filter(
-                nombre__icontains=query
-            )[:20]
+            if request.query_params.get('id', '').strip():
+                query = request.query_params.get('id').strip()
+                filtro = Q(id=query)
+                resultados = self.get_queryset().filter(filtro)[:1]
+            else:
+                query = request.query_params.get('q', '').strip()
+                if not query:
+                    return StandardResponse.success(data={'results': [], 'total': 0})
+                filtro = Q(nombre__icontains=query) | Q(codigo__icontains=query)
+                resultados = self.get_queryset().filter(filtro)[:20]
 
             serializer = DepartamentoListSerializer(resultados, many=True)
             return StandardResponse.success(data={
